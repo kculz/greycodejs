@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+
+  <div class="container mx-auto text-center py-10">
+    <h1 class="text-4xl font-bold text-indigo-600 mb-6">Welcome to Greycode</h1>
+    <p class="text-lg mb-6">
+      The best Express.js framework to get started easily with API development using Express.
+    </p>
+
+    <div class="bg-white p-6 rounded-lg shadow-lg mb-10">
+      <h2 class="text-2xl font-bold text-gray-800">Getting Started with Greycode</h2>
+      <pre class="text-left text-sm mt-4 bg-gray-200 p-4 rounded-md overflow-x-auto">
+        <code>
+        // Install dependencies
+        npm install express sequelize tailwindcss
+
+        // Create model
+        gray.js create-model model_name
+
+        // Migrate database
+        gray.js migrate
+        </code>
+      </pre>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow">
+      <h2 class="text-2xl font-bold text-gray-800">Developers & Contributors</h2>
+      <ul class="mt-1">
+        <% devs.forEach(function(dev) { %>
+          <li><%= dev.name %> - <%= dev.role %></li>
+        <% }) %>
+      </ul>
+    </div>
+  </div>
+
+</body>
+</html>

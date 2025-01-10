@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+</head>
+<body>
+    <h1><%= title %></h1>
+    
+    <% products.forEach((product) => { %>
+        <li class="border-b last:border-0 py-2">
+          <strong>Product:</strong> <%= product.name %> <br>
+          <strong>Price:</strong> <%= product.price %>
+        </li>
+      <% }); %>
+
+</body>
+</html>

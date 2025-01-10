@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-900">
+  <div class="container mx-auto py-8">
+    <h1 class="text-2xl font-bold mb-4"><%= title %></h1>
+    <ul class="bg-white shadow-md rounded-lg p-4">
+      <% users.forEach((user) => { %>
+        <li class="border-b last:border-0 py-2">
+          <strong>Username:</strong> <%= user.username %> <br>
+          <strong>Email:</strong> <%= user.email %>
+        </li>
+      <% }); %>
+    </ul>
+  </div>
+</body>
+</html>
