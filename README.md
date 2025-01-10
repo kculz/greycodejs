@@ -1,231 +1,176 @@
-# GreyCode.js CLI Documentation
+# GreyCode.js Framework Structure Documentation
 
-GreyCode.js CLI provides a robust command-line interface to manage and streamline your development workflow with Sequelize and Express.js. Below is a guide to all the commands currently supported.
+The GreyCode.js framework is designed to streamline the development of applications using Sequelize and Express.js. This document provides an overview of the folder structure, its purpose, and how to work with it effectively. While the structure is customizable, adhering to the default layout ensures smoother functionality.
 
 ---
 
-## Installation
+## Folder Structure Overview
 
-To install and use GreyCode.js CLI:
+Here is the default folder structure of a GreyCode.js project:
 
-```bash
-npm install https://github.com/kculz/greycodejs
+```plaintext
+/bin
+/config
+/controllers
+/core
+/middleware
+/models
+/public
+/routes
+/seeds
+/templates
+.env
+.env.example
+.gitignore
+app.js
+package-lock.json
+package.json
+README.md
 ```
 
+### 1. **/bin**
+- Contains scripts for starting and managing the application.
+- Example: Custom server startup scripts.
+
+### 2. **/config**
+- Holds configuration files.
+- **`database.js`**: Contains database connection settings (required).
+
+### 3. **/controllers**
+- Contains controller files for handling application logic.
+- Each controller corresponds to a specific model or feature and includes CRUD operations by default.
+- Example: `UserController.js` for user-related operations.
+
+### 4. **/core**
+- Core functionality of the framework, including essential utilities and base classes.
+- Developers can extend the framework by adding custom functionality here.
+
+### 5. **/middleware**
+- Contains middleware functions to process requests and responses.
+- Example: Authentication, logging, or validation middleware.
+
+### 6. **/models**
+- Contains Sequelize model definitions.
+- Each file represents a table in the database.
+- Example: `User.js` defines the schema and associations for the `User` table.
+
+### 7. **/public**
+- Stores static assets like images, CSS, and JavaScript files.
+- These files are served directly to the client.
+
+### 8. **/routes**
+- Contains route files that map endpoints to controllers.
+- Example: `user.js` defines routes for user-related operations.
+
+### 9. **/seeds**
+- Contains seed files for populating the database with initial or test data.
+- Example: `user-seed.json` holds seed data for the `User` table.
+
+### 10. **/templates**
+- Contains templates for generating models, controllers, and routes.
+- These templates can be customized to fit your specific requirements.
+
 ---
 
-## Commands
+## Root-Level Files
 
-### 1. **run**
+### 1. **.env**
+- Environment variables for the application.
+- Example: Database credentials, port numbers.
 
-Start the GreyCode.js application.
+### 2. **.env.example**
+- A sample environment configuration file for reference.
 
-**Usage:**
+### 3. **app.js**
+- The main entry point for the application.
+- Initializes the server, middleware, and routes.
+
+### 4. **package.json**
+- Node.js dependencies and scripts.
+- Add new dependencies or scripts as needed for the project.
+
+### 5. **README.md**
+- Documentation about the project.
+- Provide information on how to set up and run the application.
+
+---
+
+## How It Works
+
+### 1. **Starting the Application**
+Run the following command to start the application:
+
 ```bash
 gray.js run [--watch]
 ```
 
-**Description:**
-Runs the main application.
+- Use the `--watch` flag to enable `nodemon` for automatic restarts on file changes.
 
-**Options:**
-- `--watch`: Use `nodemon` to automatically restart the application on file changes.
+### 2. **Adding a Model**
+Create a new model using the CLI:
 
-**Example:**
-```bash
-gray.js run --watch
-```
-
----
-
-### 2. **list-commands**
-
-List all available CLI commands.
-
-**Usage:**
-```bash
-gray.js list-commands
-```
-
-**Description:**
-Displays all available commands in a table format.
-
----
-
-### 3. **create-model**
-
-Generate a new Sequelize model.
-
-**Usage:**
 ```bash
 gray.js create-model <name>
 ```
 
-**Description:**
-Creates a Sequelize model file with a default structure.
+The generated model will appear in the `/models` directory. Customize its fields and associations as needed.
 
-- `<name>`: The name of the model (e.g., `User`).
+### 3. **Adding a Controller**
+Generate a controller for handling logic:
 
-**Example:**
-```bash
-gray.js create-model User
-```
-Creates a file `User.js` in the `models/` directory.
-
----
-
-### 4. **migrate**
-
-Sync all models with the database.
-
-**Usage:**
-```bash
-gray.js migrate
-```
-
-**Description:**
-Reads all models and synchronizes them with the database.
-
----
-
-### 5. **create-controller**
-
-Create a new controller with basic CRUD operations.
-
-**Usage:**
 ```bash
 gray.js create-controller <name>
 ```
 
-**Description:**
-Creates a controller file with methods for Create, Read, Update, and Delete (CRUD) operations.
+Controllers are stored in the `/controllers` directory. Use these to define your application's business logic.
 
-- `<name>`: The name of the resource (e.g., `User`).
+### 4. **Defining Routes**
+Generate a route file:
 
-**Example:**
-```bash
-gray.js create-controller User
-```
-Creates a file `UserController.js` in the `controllers/` directory.
-
----
-
-### 6. **create-route**
-
-Generate a new route file for a specified controller.
-
-**Usage:**
 ```bash
 gray.js create-route <name>
 ```
 
-**Description:**
-Creates a route file and links it to the specified controller.
+Routes are stored in the `/routes` directory and link HTTP endpoints to controller methods.
 
-- `<name>`: The name of the controller (e.g., `User`).
+### 5. **Seeding the Database**
+Create or apply seed data:
 
-**Example:**
 ```bash
-gray.js create-route User
+gray.js make-seed <model> [--count <number>] [--seed]
 ```
-Creates a file `user.js` in the `routes/` directory.
+
+Use seed files in the `/seeds` directory to populate your database.
 
 ---
 
-### 7. **make-seed**
+## Customizing the Structure
 
-Generate a JSON file for seeding or seed data into the database.
+You can modify the folder structure to suit your needs. For example:
 
-**Usage:**
-```bash
-gray.js make-seed <model> [options]
-```
+1. Rename or reorganize directories.
+2. Add new directories for additional features, such as `/services` for business logic or `/tests` for unit tests.
 
-**Options:**
-- `--seed`: Seeds the database with data from the generated JSON file.
-- `--count <number>`: Number of records to generate (default: 10).
-
-**Description:**
-Creates seed data for a specified model or seeds the database directly.
-
-**Examples:**
-1. Generate seed data:
-   ```bash
-   gray.js make-seed User --count 5
-   ```
-   Creates a file `user-seed.json` in the `seeds/` directory.
-
-2. Seed data into the database:
-   ```bash
-   gray.js make-seed User --seed
-   ```
-   Seeds the data from `user-seed.json` into the `User` table.
+Update your configuration files and scripts to reflect the changes.
 
 ---
 
-### 8. **migrate:undo**
+## Best Practices
 
-Undo the migration for a specific model by dropping its table.
+1. **Separation of Concerns**:
+   - Keep controllers focused on application logic.
+   - Use middleware for cross-cutting concerns like authentication and validation.
+   
+2. **Modularity**:
+   - Group related files (e.g., models, controllers, routes) by feature.
 
-**Usage:**
-```bash
-gray.js migrate:undo <model>
-```
+3. **Environment Variables**:
+   - Store sensitive information in the `.env` file.
 
-**Description:**
-Drops the table associated with the specified model.
-
-- `<model>`: The name of the model (e.g., `User`).
-
-**Example:**
-```bash
-gray.js migrate:undo User
-```
+4. **Version Control**:
+   - Commit the `.env.example` file, but exclude `.env` using `.gitignore`.
 
 ---
 
-### 9. **migrate:undo:all**
-
-Rollback database to its initial state by dropping all tables.
-
-**Usage:**
-```bash
-gray.js migrate:undo:all
-```
-
-**Description:**
-Drops all tables in the database.
-
----
-
-## Additional Notes
-
-- For more details about each command, use the `--help` option:
-  ```bash
-  gray.js <command> --help
-  ```
-
-- Ensure the following directory structure exists for proper functionality:
-  ```plaintext
-  /config/database.js
-  /models/
-  /controllers/
-  /routes/
-  /seeds/
-  ```
-
-- Customize and expand the templates in `models`, `controllers`, and `routes` as needed for your application.
-
----
-
-## Troubleshooting
-
-If you encounter issues:
-
-1. Ensure the database connection in `/config/database.js` is properly configured.
-2. Verify that the required directories exist.
-3. Check for any missing dependencies:
-   ```bash
-   npm install
-   ```
+This structure is designed to be flexible and scalable, making it suitable for small projects as well as large applications. Modify it as needed to fit your specific use case!
 
