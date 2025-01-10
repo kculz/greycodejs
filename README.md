@@ -174,3 +174,5 @@ Update your configuration files and scripts to reflect the changes.
 
 This structure is designed to be flexible and scalable, making it suitable for small projects as well as large applications. Modify it as needed to fit your specific use case!
 
+
+
