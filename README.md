@@ -9,14 +9,50 @@ GreyCode.js CLI provides a robust command-line interface to manage and streamlin
 To install and use GreyCode.js CLI:
 
 ```bash
-npm install -g greycodejs
+npm install https://github.com/kculz/greycodejs
 ```
 
 ---
 
 ## Commands
 
-### 1. **create-model**
+### 1. **run**
+
+Start the GreyCode.js application.
+
+**Usage:**
+```bash
+gray.js run [--watch]
+```
+
+**Description:**
+Runs the main application.
+
+**Options:**
+- `--watch`: Use `nodemon` to automatically restart the application on file changes.
+
+**Example:**
+```bash
+gray.js run --watch
+```
+
+---
+
+### 2. **list-commands**
+
+List all available CLI commands.
+
+**Usage:**
+```bash
+gray.js list-commands
+```
+
+**Description:**
+Displays all available commands in a table format.
+
+---
+
+### 3. **create-model**
 
 Generate a new Sequelize model.
 
@@ -38,7 +74,7 @@ Creates a file `User.js` in the `models/` directory.
 
 ---
 
-### 2. **migrate**
+### 4. **migrate**
 
 Sync all models with the database.
 
@@ -52,7 +88,7 @@ Reads all models and synchronizes them with the database.
 
 ---
 
-### 3. **create-controller**
+### 5. **create-controller**
 
 Create a new controller with basic CRUD operations.
 
@@ -74,7 +110,7 @@ Creates a file `UserController.js` in the `controllers/` directory.
 
 ---
 
-### 4. **create-route**
+### 6. **create-route**
 
 Generate a new route file for a specified controller.
 
@@ -93,41 +129,6 @@ Creates a route file and links it to the specified controller.
 gray.js create-route User
 ```
 Creates a file `user.js` in the `routes/` directory.
-
----
-
-### 5. **migrate:undo**
-
-Undo the migration for a specific model by dropping its table.
-
-**Usage:**
-```bash
-gray.js migrate:undo <model>
-```
-
-**Description:**
-Drops the table associated with the specified model.
-
-- `<model>`: The name of the model (e.g., `User`).
-
-**Example:**
-```bash
-gray.js migrate:undo User
-```
-
----
-
-### 6. **migrate:undo:all**
-
-Rollback database to its initial state by dropping all tables.
-
-**Usage:**
-```bash
-gray.js migrate:undo:all
-```
-
-**Description:**
-Drops all tables in the database.
 
 ---
 
@@ -162,31 +163,38 @@ Creates seed data for a specified model or seeds the database directly.
 
 ---
 
-### 8. **run**
+### 8. **migrate:undo**
 
-Start the GreyCode.js application.
+Undo the migration for a specific model by dropping its table.
 
 **Usage:**
 ```bash
-gray.js run
+gray.js migrate:undo <model>
 ```
 
 **Description:**
-Runs the main application.
+Drops the table associated with the specified model.
+
+- `<model>`: The name of the model (e.g., `User`).
+
+**Example:**
+```bash
+gray.js migrate:undo User
+```
 
 ---
 
-### 9. **list-commands**
+### 9. **migrate:undo:all**
 
-List all available CLI commands.
+Rollback database to its initial state by dropping all tables.
 
 **Usage:**
 ```bash
-gray.js list-commands
+gray.js migrate:undo:all
 ```
 
 **Description:**
-Displays all available commands in a table format.
+Drops all tables in the database.
 
 ---
 
