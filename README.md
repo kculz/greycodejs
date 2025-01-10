@@ -4,28 +4,34 @@ The GreyCode.js framework is designed to streamline the development of applicati
 
 ---
 
+Installation
+
+To install the GreyCode.js framework, use the following command:
+```bash
+npm install https://github.com/kculz/greycodejs
+```
+This command installs the framework directly from the GitHub repository.
+
 ## Folder Structure Overview
 
 Here is the default folder structure of a GreyCode.js project:
 
 ```plaintext
-/bin
-/config
-/controllers
-/core
-/middleware
-/models
-/public
-/routes
-/seeds
-/templates
-.env
-.env.example
-.gitignore
-app.js
-package-lock.json
-package.json
-README.md
+bin/            # Command-line entry points for the application
+config/         # Configuration files (e.g., database settings)
+controllers/    # Controller files for handling business logic
+core/           # Core framework utilities and functionalities
+middlewares/    # Middleware functions for request/response handling
+models/         # Sequelize models for database interaction
+node_modules/   # Node.js dependencies
+public/         # Public assets (e.g., static files like images, CSS, JS)
+routes/         # Route definitions for mapping URLs to controllers
+seeds/          # Seed files for populating the database with initial data
+templates/      # Templates for generating code or HTML
+.env            # Environment variable configuration
+app.js          # Main application entry point
+package.json    # Node.js package configuration
+README.md       # Documentation for the project
 ```
 
 ### 1. **/bin**
