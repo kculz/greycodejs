@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken'); // For JWT-based authentication
 
-const verifyToken = (req, res, next) => {
+const _verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -20,5 +20,5 @@ const verifyToken = (req, res, next) => {
 };
 
 module.exports = {
-  verifyToken,
+  _verifyToken,
 };
