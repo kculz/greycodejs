@@ -8,9 +8,19 @@ Installation
 
 To install the GreyCode.js framework, use the following command:
 ```bash
-npm install https://github.com/kculz/greycodejs
+curl -L -o greycodejs-0.0.2.tgz https://github.com/kculz/greycodejs/raw/main/greycodejs-0.0.1.tgz
 ```
-This command installs the framework directly from the GitHub repository.
+
+After downloading the file, you can use tar to extract it to a desired directory:
+```bash
+tar -xvzf greycodejs-0.0.2.tgz --strip-components=1 -C ./desired-directory
+```
+
+Install dependencies and run app:
+```bash
+npm install
+gray.js run --watch
+```
 
 ## Folder Structure Overview
 
@@ -179,6 +189,17 @@ Update your configuration files and scripts to reflect the changes.
 ---
 
 This structure is designed to be flexible and scalable, making it suitable for small projects as well as large applications. Modify it as needed to fit your specific use case!
+
+---
+### Permission Issues with Running bin/cli.js
+When running commands via cli.js, you might run into permissions issues if the cli.js file doesn't have the correct execution permissions. Here's how to resolve that:
+
+- Give Execute Permissions to `cli.js`
+If you’re getting a permission error when trying to run the script, make sure the file is executable by running:
+
+```bash
+chmod +x path/to/greycodejs/bin/cli.js
+```
 
 
 
