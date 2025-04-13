@@ -34,8 +34,18 @@ GreyCodeJS follows the Model-View-Controller (MVC) pattern:
 
 ```bash
 npm install -g greycodejs-installer
-greycodejs new my-project
+```
+
+```bash
+greycodejs-installer new my-project
+```
+
+```bash
 cd my-project
+```
+
+### Run project
+```bash
 npm run dev
 ```
 
