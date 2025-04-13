@@ -1,205 +1,293 @@
-# GreyCode.js Framework Structure Documentation
+# GreyCodeJS Documentation
 
-The GreyCode.js framework is designed to streamline the development of applications using Sequelize and Express.js. This document provides an overview of the folder structure, its purpose, and how to work with it effectively. While the structure is customizable, adhering to the default layout ensures smoother functionality.
+## Introduction
 
----
+GreyCodeJS is a Node.js framework that provides an elegant, structured approach to building web applications. Built on top of Express.js, it simplifies common tasks while giving developers the flexibility to customize their application architecture.
 
-Installation
+## Core Concepts
 
-To install the GreyCode.js framework, use the following command:
-```bash
-curl -L -o greycodejs-0.0.2.tgz https://github.com/kculz/greycodejs/raw/main/greycodejs-0.0.1.tgz
-```
+### MVC Architecture
 
-After downloading the file, you can use tar to extract it to a desired directory:
-```bash
-tar -xvzf greycodejs-0.0.2.tgz --strip-components=1 -C ./desired-directory
-```
+GreyCodeJS follows the Model-View-Controller (MVC) pattern:
 
-Install dependencies and run app:
-```bash
-npm install
-gray.js run --watch
-```
+- **Models**: Data structure and database operations
+- **Views**: Presentation layer (templates)
+- **Controllers**: Business logic and request handling
 
-## Folder Structure Overview
+### Directory Structure
 
-Here is the default folder structure of a GreyCode.js project:
+- **bin**: Contains CLI tools
+- **config**: Configuration files for database, app settings
+- **controllers**: Route controllers for handling requests
+- **core**: Framework core files
+- **middlewares**: Custom middleware functions
+- **models**: Data models representing database tables
+- **public/statics**: Static assets (CSS, JS, images)
+- **routes**: Route definitions
+- **seeds**: Database seed files
+- **templates**: Templates for CLI code generation
+- **views**: View templates for rendering HTML
 
-```plaintext
-bin/            # Command-line entry points for the application
-config/         # Configuration files (e.g., database settings)
-controllers/    # Controller files for handling business logic
-core/           # Core framework utilities and functionalities
-middlewares/    # Middleware functions for request/response handling
-models/         # Sequelize models for database interaction
-node_modules/   # Node.js dependencies
-public/         # Public assets (e.g., static files like images, CSS, JS)
-routes/         # Route definitions for mapping URLs to controllers
-seeds/          # Seed files for populating the database with initial data
-templates/      # Templates for generating code or HTML
-.env            # Environment variable configuration
-app.js          # Main application entry point
-package.json    # Node.js package configuration
-README.md       # Documentation for the project
-```
+## Getting Started
 
-### 1. **/bin**
-- Contains scripts for starting and managing the application.
-- Example: Custom server startup scripts.
-
-### 2. **/config**
-- Holds configuration files.
-- **`database.js`**: Contains database connection settings (required).
-
-### 3. **/controllers**
-- Contains controller files for handling application logic.
-- Each controller corresponds to a specific model or feature and includes CRUD operations by default.
-- Example: `UserController.js` for user-related operations.
-
-### 4. **/core**
-- Core functionality of the framework, including essential utilities and base classes.
-- Developers can extend the framework by adding custom functionality here.
-
-### 5. **/middleware**
-- Contains middleware functions to process requests and responses.
-- Example: Authentication, logging, or validation middleware.
-
-### 6. **/models**
-- Contains Sequelize model definitions.
-- Each file represents a table in the database.
-- Example: `User.js` defines the schema and associations for the `User` table.
-
-### 7. **/public**
-- Stores static assets like images, CSS, and JavaScript files.
-- These files are served directly to the client.
-
-### 8. **/routes**
-- Contains route files that map endpoints to controllers.
-- Example: `user.js` defines routes for user-related operations.
-
-### 9. **/seeds**
-- Contains seed files for populating the database with initial or test data.
-- Example: `user-seed.json` holds seed data for the `User` table.
-
-### 10. **/templates**
-- Contains templates for generating models, controllers, and routes.
-- These templates can be customized to fit your specific requirements.
-
----
-
-## Root-Level Files
-
-### 1. **.env**
-- Environment variables for the application.
-- Example: Database credentials, port numbers.
-
-### 2. **.env.example**
-- A sample environment configuration file for reference.
-
-### 3. **app.js**
-- The main entry point for the application.
-- Initializes the server, middleware, and routes.
-
-### 4. **package.json**
-- Node.js dependencies and scripts.
-- Add new dependencies or scripts as needed for the project.
-
-### 5. **README.md**
-- Documentation about the project.
-- Provide information on how to set up and run the application.
-
----
-
-## How It Works
-
-### 1. **Starting the Application**
-Run the following command to start the application:
+### Installation
 
 ```bash
-gray.js run [--watch]
+npm install -g greycodejs-installer
+greycodejs new my-project
+cd my-project
+npm run dev
 ```
 
-- Use the `--watch` flag to enable `nodemon` for automatic restarts on file changes.
+### Configuration
 
-### 2. **Adding a Model**
-Create a new model using the CLI:
+1. Database setup in `config/database.js`
+2. Environment variables in `.env` file
+3. Application settings in `config/app.js` (if present)
+
+## Database Operations
+
+### Models
+
+Models define your data structure and are stored in the `models` directory.
+
+```javascript
+// models/User.js
+module.exports = (sequelize, DataTypes) => {
+  const User = sequelize.define('User', {
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    email: {
+      type: DataTypes.STRING,
+      unique: true
+    }
+  });
+  
+  return User;
+};
+```
+
+### Migrations and Seeders
+
+Use the CLI to create and run migrations:
 
 ```bash
-gray.js create-model <name>
+npm run cli -- create-migration create_users_table
+npm run cli -- migrate
 ```
 
-The generated model will appear in the `/models` directory. Customize its fields and associations as needed.
-
-### 3. **Adding a Controller**
-Generate a controller for handling logic:
+Create seed data:
 
 ```bash
-gray.js create-controller <name>
+npm run cli -- create-seed users
+npm run cli -- seed
 ```
 
-Controllers are stored in the `/controllers` directory. Use these to define your application's business logic.
+## Routing
 
-### 4. **Defining Routes**
-Generate a route file:
+### Defining Routes
+
+Create route files in the `routes` directory:
+
+```javascript
+// routes/users.js
+const express = require('express');
+const router = express.Router();
+const UserController = require('../controllers/UserController');
+
+router.get('/', UserController.index);
+router.get('/:id', UserController.show);
+router.post('/', UserController.store);
+router.put('/:id', UserController.update);
+router.delete('/:id', UserController.destroy);
+
+module.exports = router;
+```
+
+### Route Registration
+
+Register routes in `app.js`:
+
+```javascript
+const usersRoutes = require('./routes/users');
+app.use('/api/users', usersRoutes);
+```
+
+## Controllers
+
+Create controller files in the `controllers` directory:
+
+```javascript
+// controllers/UserController.js
+const { User } = require('../models');
+
+module.exports = {
+  async index(req, res) {
+    try {
+      const users = await User.findAll();
+      return res.json(users);
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  },
+  
+  async store(req, res) {
+    try {
+      const user = await User.create(req.body);
+      return res.status(201).json(user);
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
+  },
+  
+  // Other controller methods...
+};
+```
+
+## Middleware
+
+Create middleware in the `middlewares` directory:
+
+```javascript
+// middlewares/auth.js
+module.exports = (req, res, next) => {
+  const token = req.headers.authorization;
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  // Token validation logic
+  
+  next();
+};
+```
+
+Apply middleware in routes:
+
+```javascript
+const authMiddleware = require('../middlewares/auth');
+router.get('/protected', authMiddleware, UserController.protectedMethod);
+```
+
+## Views and Templates
+
+GreyCodeJS uses EJS by default for view rendering:
+
+```javascript
+// controllers/HomeController.js
+module.exports = {
+  index(req, res) {
+    res.render('home', { title: 'Welcome to GreyCodeJS' });
+  }
+};
+```
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run cli -- create-model <name>` | Create a new model |
+| `npm run cli -- create-controller <name>` | Create a new controller |
+| `npm run cli -- create-route <name>` | Create a new route file |
+| `npm run cli -- create-middleware <name>` | Create middleware |
+| `npm run cli -- create-migration <name>` | Create a migration |
+| `npm run cli -- migrate` | Run migrations |
+| `npm run cli -- create-seed <name>` | Create a seed file |
+| `npm run cli -- seed` | Run seed files |
+
+## Error Handling
+
+GreyCodeJS provides centralized error handling through middleware:
+
+```javascript
+// middlewares/errorHandler.js
+module.exports = (err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    error: {
+      message: err.message,
+      stack: process.env.NODE_ENV === 'production' ? null : err.stack
+    }
+  });
+};
+```
+
+## Advanced Topics
+
+### Custom Services
+
+Create service classes for complex business logic:
+
+```javascript
+// services/EmailService.js
+class EmailService {
+  static async sendWelcomeEmail(user) {
+    // Email sending logic
+  }
+}
+
+module.exports = EmailService;
+```
+
+### Validation
+
+Implement request validation:
+
+```javascript
+// middlewares/validateUser.js
+module.exports = (req, res, next) => {
+  const { name, email, password } = req.body;
+  
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  
+  // More validation...
+  
+  next();
+};
+```
+
+### Authentication
+
+Set up JWT authentication:
+
+```javascript
+// services/AuthService.js
+const jwt = require('jsonwebtoken');
+
+class AuthService {
+  static generateToken(user) {
+    return jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+      expiresIn: '1d'
+    });
+  }
+  
+  static verifyToken(token) {
+    return jwt.verify(token, process.env.JWT_SECRET);
+  }
+}
+
+module.exports = AuthService;
+```
+
+## Deployment
+
+1. Set environment variables for production
+2. Build assets if needed
+3. Run migrations
+4. Start the application in production mode:
 
 ```bash
-gray.js create-route <name>
+NODE_ENV=production npm start
 ```
 
-Routes are stored in the `/routes` directory and link HTTP endpoints to controller methods.
+## Resources
 
-### 5. **Seeding the Database**
-Create or apply seed data:
-
-```bash
-gray.js make-seed <model> [--count <number>] [--seed]
-```
-
-Use seed files in the `/seeds` directory to populate your database.
-
----
-
-## Customizing the Structure
-
-You can modify the folder structure to suit your needs. For example:
-
-1. Rename or reorganize directories.
-2. Add new directories for additional features, such as `/services` for business logic or `/tests` for unit tests.
-
-Update your configuration files and scripts to reflect the changes.
-
----
-
-## Best Practices
-
-1. **Separation of Concerns**:
-   - Keep controllers focused on application logic.
-   - Use middleware for cross-cutting concerns like authentication and validation.
-   
-2. **Modularity**:
-   - Group related files (e.g., models, controllers, routes) by feature.
-
-3. **Environment Variables**:
-   - Store sensitive information in the `.env` file.
-
-4. **Version Control**:
-   - Commit the `.env.example` file, but exclude `.env` using `.gitignore`.
-
----
-
-This structure is designed to be flexible and scalable, making it suitable for small projects as well as large applications. Modify it as needed to fit your specific use case!
-
----
-### Permission Issues with Running bin/cli.js
-When running commands via cli.js, you might run into permissions issues if the cli.js file doesn't have the correct execution permissions. Here's how to resolve that:
-
-- Give Execute Permissions to `cli.js`
-If you’re getting a permission error when trying to run the script, make sure the file is executable by running:
-
-```bash
-chmod +x path/to/greycodejs/bin/cli.js
-```
-
-
-
+- [GitHub Repository](https://github.com/kculz/greycodejs)
+- [Report Issues](https://github.com/kculz/greycodejs/issues)
+- [Express.js Documentation](https://expressjs.com/)
+- [Sequelize Documentation](https://sequelize.org/)
