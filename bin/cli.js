@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { Sequelize } = require('sequelize');
 const { faker } = require('@faker-js/faker');
+const chalk = require('chalk');
 
 const program = new Command();
 
@@ -46,7 +47,7 @@ module.exports = (sequelize, DataTypes) => {
 `;
 
     // Define the target path
-    const modelsPath = path.resolve(__dirname, '../models');
+    const modelsPath = path.resolve(process.cwd(), 'models');
     const targetPath = path.join(modelsPath, `${modelName}.js`);
 
     // Ensure the models directory exists
@@ -56,18 +57,16 @@ module.exports = (sequelize, DataTypes) => {
 
     // Write the file
     fs.writeFileSync(targetPath, content);
-    console.log(`Model ${modelName} created at ${targetPath}`);
+    console.log(chalk.green(`Model ${modelName} created at ${targetPath}`));
   });
 
-
-
-  // Migrate command to sync models with the database
-  program
+// Migrate command to sync models with the database
+program
   .command('migrate')
   .description('Sync all models with the database')
   .action(async () => {
-    const configPath = path.resolve(__dirname, '../config/database.js');
-    const modelsPath = path.resolve(__dirname, '../models');
+    const configPath = path.resolve(process.cwd(), 'config/database.js');
+    const modelsPath = path.resolve(process.cwd(), 'models');
 
     // Load database configuration
     const dbConfig = require(configPath);
@@ -84,7 +83,7 @@ module.exports = (sequelize, DataTypes) => {
 
         // Ensure model is a function
         if (typeof model !== 'function') {
-          console.error(`Error: Model in ${modelPath} is not a function.`);
+          console.error(chalk.red(`Error: Model in ${modelPath} is not a function.`));
           return;
         }
 
@@ -102,22 +101,20 @@ module.exports = (sequelize, DataTypes) => {
     // Sync models with the database
     try {
       await sequelize.sync({ alter: true });
-      console.log('Database synced successfully!');
+      console.log(chalk.green('Database synced successfully!'));
     } catch (error) {
-      console.error('Error syncing database:', error.message);
+      console.error(chalk.red('Error syncing database:'), error.message);
     } finally {
       await sequelize.close();
     }
   });
-
-
 
 // Command to create Controllers
 program
   .command('create-controller <name>')
   .description('Create a new controller with basic CRUD operations')
   .action((name) => {
-    const controllersDir = path.join(__dirname, '../controllers');
+    const controllersDir = path.join(process.cwd(), 'controllers');
     const controllerName = `${name.charAt(0).toUpperCase() + name.slice(1)}Controller`;
     const filePath = path.join(controllersDir, `${controllerName}.js`);
 
@@ -209,20 +206,17 @@ module.exports.${controllerName} = {
 
     // Prevent overwriting existing controllers
     if (fs.existsSync(filePath)) {
-      console.error(`Controller "${controllerName}" already exists.`);
+      console.error(chalk.red(`Controller "${controllerName}" already exists.`));
       return;
     }
 
     // Write the controller file
     fs.writeFileSync(filePath, content);
-    console.log(`Controller "${controllerName}" created at ${filePath}`);
+    console.log(chalk.green(`Controller "${controllerName}" created at ${filePath}`));
   });
 
-
-
-
-  // Command to create Routes
-  program
+// Command to create Routes
+program
   .command('create-route <name>')
   .description('Generate a new route file for a specified controller')
   .action((name) => {
@@ -245,7 +239,7 @@ module.exports = { router };
 `;
 
     // Define the target path
-    const routesPath = path.resolve(__dirname, '../routes');
+    const routesPath = path.resolve(process.cwd(), 'routes');
     const targetPath = path.join(routesPath, `${lowerRouteName}.js`);
 
     // Ensure the routes directory exists
@@ -254,38 +248,37 @@ module.exports = { router };
     }
 
     // Check if the controller exists
-    const controllersPath = path.resolve(__dirname, '../controllers');
+    const controllersPath = path.resolve(process.cwd(), 'controllers');
     const controllerPath = path.join(controllersPath, `${routeName}Controller.js`);
     if (!fs.existsSync(controllerPath)) {
-      console.error(`Controller ${routeName}Controller.js does not exist. Create the controller first.`);
+      console.error(chalk.red(`Controller ${routeName}Controller.js does not exist. Create the controller first.`));
       return;
     }
 
     // Write the file
     if (fs.existsSync(targetPath)) {
-      console.error(`Route ${lowerRouteName}.js already exists.`);
+      console.error(chalk.red(`Route ${lowerRouteName}.js already exists.`));
     } else {
       fs.writeFileSync(targetPath, content);
-      console.log(`Route ${lowerRouteName}.js created at ${targetPath}`);
+      console.log(chalk.green(`Route ${lowerRouteName}.js created at ${targetPath}`));
     }
   });
 
-
-  program
+program
   .command('migrate:undo <model>')
   .description('Undo the migration for the specified model by dropping its table')
   .action(async (model) => {
-    const configPath = path.resolve(__dirname, '../config/database.js');
-    const modelsPath = path.resolve(__dirname, '../models');
+    const configPath = path.resolve(process.cwd(), 'config/database.js');
+    const modelsPath = path.resolve(process.cwd(), 'models');
     const sequelize = new Sequelize(require(configPath));
 
     try {
-      console.log(`Reverting migration for the model: ${model}`);
+      console.log(chalk.blue(`Reverting migration for the model: ${model}`));
 
       // Load the specified model
       const modelFile = path.join(modelsPath, `${model}.js`);
       if (!fs.existsSync(modelFile)) {
-        console.error(`Model "${model}" does not exist in the models directory.`);
+        console.error(chalk.red(`Model "${model}" does not exist in the models directory.`));
         process.exit(1);
       }
 
@@ -294,36 +287,33 @@ module.exports = { router };
 
       // Drop the table associated with the model
       await sequelize.getQueryInterface().dropTable(modelInstance.tableName);
-      console.log(`Successfully dropped the table for model "${model}"!`);
+      console.log(chalk.green(`Successfully dropped the table for model "${model}"!`));
     } catch (error) {
-      console.error(`Error undoing migration for model "${model}":`, error.message);
+      console.error(chalk.red(`Error undoing migration for model "${model}":`, error.message));
     } finally {
       await sequelize.close();
     }
   });
 
-
-  program
+program
   .command('migrate:undo:all')
   .description('Undo all migrations (rollback database to initial state)')
   .action(async () => {
-    const configPath = path.resolve(__dirname, '../config/database.js');
+    const configPath = path.resolve(process.cwd(), 'config/database.js');
     const sequelize = new Sequelize(require(configPath));
 
     try {
-      console.log('Reverting all migrations...');
+      console.log(chalk.blue('Reverting all migrations...'));
       await sequelize.getQueryInterface().dropAllTables();
-      console.log('Successfully reverted all migrations!');
+      console.log(chalk.green('Successfully reverted all migrations!'));
     } catch (error) {
-      console.error('Error undoing all migrations:', error.message);
+      console.error(chalk.red('Error undoing all migrations:'), error.message);
     } finally {
       await sequelize.close();
     }
   });
 
-
-
-  program
+program
   .command('make-seed <model>')
   .option('--seed', 'Seed the database with data from the generated JSON')
   .option('--count <number>', 'Number of records to generate', 10)
@@ -332,16 +322,16 @@ module.exports = { router };
     const { seed, count } = options;
     const seedCount = parseInt(count, 10);
 
-    const modelsPath = path.resolve(__dirname, '../models');
-    const seedDataPath = path.resolve(__dirname, '../seeds');
+    const modelsPath = path.resolve(process.cwd(), 'models');
+    const seedDataPath = path.resolve(process.cwd(), 'seeds');
     const modelFile = path.join(modelsPath, `${modelName}.js`);
 
     if (!fs.existsSync(modelFile)) {
-      console.error(`Model "${modelName}" not found in the models directory.`);
+      console.error(chalk.red(`Model "${modelName}" not found in the models directory.`));
       return;
     }
 
-    const sequelize = new Sequelize(require(path.resolve(__dirname, '../config/database.js')));
+    const sequelize = new Sequelize(require(path.resolve(process.cwd(), 'config/database.js')));
     const model = require(modelFile)(sequelize, Sequelize.DataTypes);
 
     if (!fs.existsSync(seedDataPath)) {
@@ -385,74 +375,69 @@ module.exports = { router };
       }
 
       fs.writeFileSync(jsonFilePath, JSON.stringify(seedData, null, 2));
-      console.log(`Seed data for model "${modelName}" created at ${jsonFilePath}`);
+      console.log(chalk.green(`Seed data for model "${modelName}" created at ${jsonFilePath}`));
     } else {
       if (!fs.existsSync(jsonFilePath)) {
-        console.error(`Seed data JSON file for model "${modelName}" not found.`);
+        console.error(chalk.red(`Seed data JSON file for model "${modelName}" not found.`));
         return;
       }
 
       const seedData = JSON.parse(fs.readFileSync(jsonFilePath, 'utf-8'));
 
       try {
-        console.log(`Seeding ${seedData.length} records into the "${modelName}" table...`);
+        console.log(chalk.blue(`Seeding ${seedData.length} records into the "${modelName}" table...`));
         await model.bulkCreate(seedData);
-        console.log(`Successfully seeded ${seedData.length} records into the "${modelName}" table.`);
+        console.log(chalk.green(`Successfully seeded ${seedData.length} records into the "${modelName}" table.`));
       } catch (error) {
-        console.error(`Error seeding data into the "${modelName}" table:`, error.message);
+        console.error(chalk.red(`Error seeding data into the "${modelName}" table:`, error.message));
       } finally {
         await sequelize.close();
       }
     }
   });
 
-
-
-  program
+program
   .command('run')
-  .description('Start the Gray.js application')
+  .description('Start the GreyCode.js application')
   .option('--watch', 'Run the application with nodemon for live reloading')
   .action((options) => {
     if (options.watch) {
       // Use nodemon to run the application
       const nodemon = require('nodemon');
-      const appPath = path.resolve(__dirname, '../app.js');
+      const appPath = path.resolve(process.cwd(), 'app.js');
 
-      console.log('Running the application with nodemon...');
+      console.log(chalk.blue('Running the application with nodemon...'));
       nodemon({
         script: appPath,
         ext: 'js json',
         watch: [
-          path.resolve(__dirname, '../') // Watch the project directory
+          path.resolve(process.cwd(), './') // Watch the project directory
         ],
       });
 
       nodemon
         .on('start', () => {
-          console.log('Application has started.');
+          console.log(chalk.green('Application has started.'));
         })
         .on('restart', (files) => {
-          console.log('Application restarted due to changes in:', files);
+          console.log(chalk.blue('Application restarted due to changes in:'), files);
         })
         .on('quit', () => {
-          console.log('Application has quit.');
+          console.log(chalk.yellow('Application has quit.'));
           process.exit();
         });
     } else {
       // Run the application normally
-      console.log('Running the application...');
-      require('../app'); // Require your main app.js file
+      console.log(chalk.blue('Running the application...'));
+      require(path.resolve(process.cwd(), 'app.js')); // Require your main app.js file
     }
   });
 
-
-  // List all, commands
-  program
+// List all commands
+program
   .command('list-commands')
   .description('List all available CLI commands')
   .action(() => {
-    const chalk = require('chalk'); // For bold text and formatting
-
     console.log('\nAvailable Commands:\n');
 
     // Calculate padding for alignment
@@ -470,10 +455,8 @@ module.exports = { router };
       );
     });
 
-    console.log('\n\nUse "gray.js <command> --help" for detailed information about a specific command.\n');
+    console.log('\n\nUse "greycodejs <command> --help" for detailed information about a specific command.\n');
   });
-
-
 
 // Parse arguments
 program.parse(process.argv);
