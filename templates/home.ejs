@@ -3,13 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Greycode Docs</title>
+    <title>GreyCodeJS Documentation</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#6366F1',
+                        'primary-dark': '#4F46E5',
+                        'primary-light': '#A5B4FC',
+                        'secondary': '#1E293B',
+                        'dark': '#0F172A',
+                        'light': '#F8FAFC'
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            line-height: 1.6; /* Improved line height for readability */
+            scroll-behavior: smooth;
+        }
+
+        code, pre {
+            font-family: 'JetBrains Mono', monospace;
         }
 
         .sidebar {
@@ -17,129 +39,503 @@
             top: 0;
             left: 0;
             height: 100vh;
-            width: 280px; /* Wider sidebar */
+            width: 280px;
             overflow-y: auto;
-            background-color: #f9fafb; /* Softer background */
-            padding: 2rem;
-            border-right: 1px solid #e5e7eb; /* Subtle border */
+            transition: transform 0.3s ease;
         }
 
         .main-content {
-            margin-left: 300px; /* Adjusted margin */
-            padding: 2rem;
-            flex: 1;
+            margin-left: 280px;
         }
 
-        .sidebar a {
-            display: block;
-            padding: 0.75rem 0; /* Increased padding */
-            color: #374151;
-            text-decoration: none;
-            font-weight: 500; /* Slightly bolder links */
-            transition: color 0.3s;
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
         }
 
-        .sidebar a:hover {
-            color: #4f46e5;
+        .nav-link {
+            position: relative;
+            transition: all 0.3s ease;
         }
 
-        code {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            background-color: #f3f4f6;
-            padding: 0.2rem 0.4rem;
-            border-radius: 0.25rem;
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: #6366F1;
+            transition: width 0.3s ease;
         }
 
-        pre {
-            background-color: #f3f4f6;
-            padding: 1rem;
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
+        .code-block {
             border-radius: 0.5rem;
-            overflow-x: auto;
-            font-size: 0.875rem; /* Slightly smaller code font */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
-        h1, h2, h3{
-            font-weight: 700;
+
+        .section-heading {
+            display: inline-block;
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .section-heading::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 60px;
+            height: 3px;
+            background-color: #6366F1;
+            border-radius: 3px;
+        }
+
+        .feature-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
     </style>
 </head>
-<body class="bg-white">
+<body class="bg-light">
+    <!-- Header with mobile navigation toggle -->
+    <header class="lg:hidden flex items-center justify-between p-4 bg-white shadow-md z-50 sticky top-0">
+        <div class="flex items-center">
+            <button id="sidebar-toggle" class="mr-4 text-gray-600 focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+            <h1 class="text-xl font-bold text-primary">GreyCodeJS</h1>
+        </div>
+        <a href="https://github.com/kculz/greycodejs" target="_blank" class="text-gray-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+        </a>
+    </header>
+
     <div class="flex">
-        <aside class="sidebar">
-            <h2 class="text-lg font-bold mb-6 text-gray-800">Table of Contents</h2>
-            <nav>
-              <a href="#welcome">🚀 Welcome</a>
-              <a href="#getting-started">🛠️ Getting Started</a>
-              <a href="#structure">🗂️ Framework Structure</a>
-              <a href="#how-it-works">⚙️ How It Works</a>
-              <a href="#github">🔗 GitHub</a>
-              <a href="#developers">🧑‍💻 Developers & Contributors</a>
+        <!-- Sidebar -->
+        <aside class="sidebar bg-white shadow-lg p-6 z-40" id="sidebar">
+            <div class="flex items-center mb-8 lg:mb-12">
+                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white font-bold text-lg">
+                    GC
+                </div>
+                <h2 class="ml-3 text-xl font-bold text-dark">GreyCodeJS</h2>
+            </div>
+
+            <nav class="space-y-1">
+                <a href="#welcome" class="nav-link block py-3 px-4 text-gray-700 hover:text-primary rounded-lg hover:bg-indigo-50 transition-all">
+                    🚀 Welcome
+                </a>
+                <a href="#getting-started" class="nav-link block py-3 px-4 text-gray-700 hover:text-primary rounded-lg hover:bg-indigo-50 transition-all">
+                    🛠️ Getting Started
+                </a>
+                <a href="#structure" class="nav-link block py-3 px-4 text-gray-700 hover:text-primary rounded-lg hover:bg-indigo-50 transition-all">
+                    🗂️ Framework Structure
+                </a>
+                <a href="#features" class="nav-link block py-3 px-4 text-gray-700 hover:text-primary rounded-lg hover:bg-indigo-50 transition-all">
+                    ✨ Features
+                </a>
+                <a href="#how-it-works" class="nav-link block py-3 px-4 text-gray-700 hover:text-primary rounded-lg hover:bg-indigo-50 transition-all">
+                    ⚙️ How It Works
+                </a>
+                <a href="#github" class="nav-link block py-3 px-4 text-gray-700 hover:text-primary rounded-lg hover:bg-indigo-50 transition-all">
+                    🔗 GitHub
+                </a>
+                <a href="#developers" class="nav-link block py-3 px-4 text-gray-700 hover:text-primary rounded-lg hover:bg-indigo-50 transition-all">
+                    🧑‍💻 Contributors
+                </a>
             </nav>
+
+            <div class="mt-12 pt-8 border-t border-gray-200">
+                <a href="https://github.com/kculz/greycodejs" class="flex items-center px-4 py-3 text-sm text-gray-600 hover:text-primary transition-colors rounded-lg hover:bg-indigo-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    Visit GitHub Repository
+                </a>
+                <p class="text-xs text-gray-500 mt-6 px-4">Documentation v1.0.0</p>
+            </div>
         </aside>
 
-        <main class="main-content">
-            <section id="welcome" class="mb-12">
-                <h1 class="text-4xl text-indigo-700 mb-4 ">Welcome to Greycodejs! 🎉</h1>
-                <p class="text-lg text-gray-700">The best Express.js framework to get started easily with web development using Express. ⚡</p>
+        <!-- Main Content -->
+        <main class="main-content p-6 lg:p-12 pb-24">
+            <section id="welcome" class="mb-16">
+                <div class="max-w-3xl">
+                    <h1 class="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-dark mb-6">
+                        Welcome to GreyCodeJS!
+                    </h1>
+                    <p class="text-xl text-gray-700 mb-8">
+                        A powerful, elegant Express.js framework that makes web development intuitive and efficient. ⚡
+                    </p>
+                    <div class="flex flex-wrap gap-4">
+                        <a href="#getting-started" class="inline-flex items-center px-6 py-3 bg-primary text-white font-medium rounded-lg shadow-md hover:bg-primary-dark transition-colors">
+                            Get Started
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </a>
+                        <a href="https://github.com/kculz/greycodejs" target="_blank" class="inline-flex items-center px-6 py-3 bg-white text-primary border border-primary font-medium rounded-lg hover:bg-indigo-50 transition-colors">
+                            View on GitHub
+                        </a>
+                    </div>
+                </div>
             </section>
 
-            <section id="getting-started" class="mb-12">
-                <h2 class="text-2xl text-gray-800 mb-4">🛠️ Getting Started</h2>
-                <pre>
-                    <code class="text-gray-800">
-                        // Install dependencies<br>
-                        npm install<br><br>
-                        // Create model<br>
-                        gray.js create-model model_name<br><br>
-                        // Migrate database<br>
-                        gray.js migrate
-                    </code>
-                </pre>
+            <section id="getting-started" class="mb-16">
+                <h2 class="section-heading text-3xl font-bold text-gray-800 mb-6">🛠️ Getting Started</h2>
+                <div class="bg-secondary rounded-xl overflow-hidden code-block">
+                    <div class="flex items-center justify-between bg-dark px-4 py-2">
+                        <span class="text-gray-300 text-sm">Installation & Setup</span>
+                        <div class="flex space-x-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                    </div>
+                    <pre class="p-4 text-gray-300 text-sm overflow-x-auto"><code class="language-bash"># Install globally
+npm install -g greycodejs-installer
+
+# Create a new project
+greycodejs-installer new my-project
+
+# Navigate to project
+cd my-project
+
+# Install dependencies 
+npm install
+
+# Start development server
+npm run dev
+
+# Create a model using CLI
+npm run cli -- create-model User
+
+# Migrate database
+npm run cli -- migrate</code></pre>
+                </div>
+
+                <div class="mt-8 bg-gray-50 border border-gray-200 rounded-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Quick Setup</h3>
+                    <ol class="list-decimal pl-5 space-y-2 text-gray-700">
+                        <li>Install the GreyCodeJS installer globally with npm</li>
+                        <li>Create a new project using the installer</li>
+                        <li>Navigate to your project directory and install dependencies</li>
+                        <li>Start the development server</li>
+                        <li>Begin building your application with the CLI tools</li>
+                    </ol>
+                </div>
             </section>
 
-            <section id="structure" class="mb-12">
-                <h2 class="text-2xl text-gray-800 mb-4">🗂️ Framework Structure</h2>
-                <p class="text-gray-700 mb-4">The GreyCode.js framework is designed to streamline the development of applications using Sequelize and Express.js.</p>
-                <pre>
-                  <code class="text-gray-800">
-                    Folder Structure Overview:<br>
-                    ├── bin/ <span class="text-gray-500"># Command-line entry points for the application</span><br>
-                    ├── config/ <span class="text-gray-500"># Configuration files (e.g., database settings)</span><br>
-                    ├── controllers/ <span class="text-gray-500"># Controller files for handling business logic</span><br>
-                    ├── core/ <span class="text-gray-500"># Core framework utilities and functionalities</span><br>
-                    ├── middlewares/ <span class="text-gray-500"># Middleware functions for request/response handling</span><br>
-                    ├── models/ <span class="text-gray-500"># Sequelize models for database interaction</span><br>
-                    ├── node_modules/ <span class="text-gray-500"># Node.js dependencies</span><br>
-                    ├── public/ <span class="text-gray-500"># Public assets (e.g., static files like images, CSS, JS)</span><br>
-                    ├── routes/ <span class="text-gray-500"># Route definitions for mapping URLs to controllers</span><br>
-                    ├── seeds/ <span class="text-gray-500"># Seed files for populating the database with initial data</span><br>
-                    ├── templates/ <span class="text-gray-500"># Templates for generating code or HTML</span><br>
-                    ├── .env <span class="text-gray-500"># Environment variable configuration</span><br>
-                    ├── app.js <span class="text-gray-500"># Main application entry point</span><br>
-                    ├── package.json <span class="text-gray-500"># Node.js package configuration</span><br>
-                    └── README.md <span class="text-gray-500"># Documentation for the project</span>
-                </code>
-                </pre>
+            <section id="structure" class="mb-16">
+                <h2 class="section-heading text-3xl font-bold text-gray-800 mb-6">🗂️ Framework Structure</h2>
+                <p class="text-gray-700 mb-6">
+                    GreyCodeJS provides a well-organized structure to help you build maintainable applications. Here's how the framework's directories are organized:
+                </p>
+
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="bg-secondary text-white px-6 py-4">
+                        <h3 class="text-lg font-semibold">Directory Structure</h3>
+                    </div>
+                    <div class="p-6 overflow-x-auto">
+                        <pre class="text-gray-800 text-sm"><code class="language-text">project-root/
+├── bin/                # CLI tools & executables
+│   └── cli.js          # Command-line interface for the framework
+├── config/             # Configuration files
+│   └── database.js     # Database configuration
+├── controllers/        # Controller files for handling logic
+├── core/               # Core framework files
+├── middlewares/        # Express middleware functions
+├── models/             # Sequelize models
+├── public/statics/     # Static assets (images, CSS, JS)
+├── routes/             # Route definitions
+├── seeds/              # Database seed files
+├── templates/          # Templates | Views
+├── .env                # Environment variables
+├── .env.example        # Example environment configuration
+├── .gitignore          # Git ignore file
+├── app.js              # Main application entry point
+├── package.json        # Project dependencies and scripts
+└── README.md           # Project documentation</code></pre>
+                    </div>
+                </div>
             </section>
 
-            <section id="how-it-works" class="mb-12">
-                <h2 class="text-2xl text-gray-800 mb-4">⚙️ How It Works</h2>
-                <p class="text-gray-700">The framework is designed to be flexible. You can generate models, controllers, and routes via CLI commands like <code>gray.js create-model</code>, and manage them within the appropriate directories.</p>
+            <section id="features" class="mb-16">
+                <h2 class="section-heading text-3xl font-bold text-gray-800 mb-6">✨ Features</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="feature-card bg-white p-6 rounded-xl shadow-md">
+                        <div class="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">MVC Architecture</h3>
+                        <p class="text-gray-600">Clean separation of Models, Views, and Controllers for organized code structure.</p>
+                    </div>
+                    
+                    <div class="feature-card bg-white p-6 rounded-xl shadow-md">
+                        <div class="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">CLI Tools</h3>
+                        <p class="text-gray-600">Built-in command-line interface for generating models, controllers, migrations, and more.</p>
+                    </div>
+                    
+                    <div class="feature-card bg-white p-6 rounded-xl shadow-md">
+                        <div class="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">Database Integration</h3>
+                        <p class="text-gray-600">Seamless Sequelize ORM integration for database operations and migrations.</p>
+                    </div>
+                    
+                    <div class="feature-card bg-white p-6 rounded-xl shadow-md">
+                        <div class="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">Middleware Support</h3>
+                        <p class="text-gray-600">Easy integration and management of Express.js middleware functions.</p>
+                    </div>
+                    
+                    <div class="feature-card bg-white p-6 rounded-xl shadow-md">
+                        <div class="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">Express.js Power</h3>
+                        <p class="text-gray-600">Built on top of Express.js for high performance and flexibility.</p>
+                    </div>
+                    
+                    <div class="feature-card bg-white p-6 rounded-xl shadow-md">
+                        <div class="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">Modular Structure</h3>
+                        <p class="text-gray-600">Organized project layout for better maintainability and scalability.</p>
+                    </div>
+                </div>
             </section>
 
-            <section id="github" class="mb-12">
-                <h2 class="text-2xl text-gray-800 mb-4">🔗 GitHub</h2>
-                <p class="text-gray-700">For more detailed documentation, please refer to the full documentation on GitHub: <a href="https://github.com/kculz/greycodejs/blob/main/README.md" target="_blank" class="text-indigo-600 hover:text-indigo-800">GreyCode.js Full Documentation</a></p>
+            <section id="how-it-works" class="mb-16">
+                <h2 class="section-heading text-3xl font-bold text-gray-800 mb-6">⚙️ How It Works</h2>
+                
+                <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                    <p class="text-gray-700 mb-4">
+                        GreyCodeJS simplifies Express.js development by providing a well-structured framework with powerful tools. Here's a quick overview of how to use key features:
+                    </p>
+
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">Creating Models</h3>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <code class="text-gray-800">npm run cli -- create-model User</code>
+                            </div>
+                            <p class="mt-2 text-sm text-gray-600">This creates a Sequelize model in the models directory with basic structure.</p>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">Creating Controllers</h3>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <code class="text-gray-800">npm run cli -- create-controller UserController</code>
+                            </div>
+                            <p class="mt-2 text-sm text-gray-600">Generates a controller with standard CRUD operations.</p>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">Creating Routes</h3>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <code class="text-gray-800">npm run cli -- create-route users</code>
+                            </div>
+                            <p class="mt-2 text-sm text-gray-600">Sets up route handlers in the routes directory.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-indigo-50 border-l-4 border-primary rounded-r-lg p-6">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-primary">Pro Tip</h3>
+                            <div class="mt-2 text-sm text-indigo-700">
+                                <p>You can create entire resource sets (model, controller, and routes) with a single command:</p>
+                                <code class="bg-indigo-100 px-2 py-1 rounded mt-2 inline-block">npm run cli -- create-resource User</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
 
-            <section id="developers" class="mb-12">
-                <h2 class="text-2xl text-gray-800 mb-4">🧑‍💻 Developers & Contributors</h2>
-                <ul class="mt-1">
-                    <% devs.forEach(function(dev) { %>
-                    <li><%= dev.name %> - <%= dev.role %></li>
-                    <% }) %>
-                </ul>
+            <section id="github" class="mb-16">
+                <h2 class="section-heading text-3xl font-bold text-gray-800 mb-6">🔗 GitHub</h2>
+                
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="p-6">
+                        <p class="text-gray-700 mb-4">
+                            For more detailed documentation, code examples, and to contribute to the project, visit our GitHub repository:
+                        </p>
+                        
+                        <a href="https://github.com/kculz/greycodejs" target="_blank" class="inline-flex items-center px-6 py-3 bg-gray-800 text-white font-medium rounded-lg hover:bg-gray-700 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                            </svg>
+                            GreyCodeJS on GitHub
+                        </a>
+                        
+                        <div class="mt-6 bg-gray-50 rounded-lg p-4">
+                            <h3 class="text-md font-semibold text-gray-800 mb-2">Repository Features</h3>
+                            <ul class="list-disc pl-5 text-gray-700">
+                                <li>Detailed installation & usage guides</li>
+                                <li>Code examples & tutorials</li>
+                                <li>Issue tracking & feature requests</li>
+                                <li>Active community support</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </section>
+
+            <section id="developers" class="mb-16">
+                <h2 class="section-heading text-3xl font-bold text-gray-800 mb-6">🧑‍💻 Contributors</h2>
+                
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <p class="text-gray-700 mb-6">
+                        GreyCodeJS is maintained by a dedicated team of contributors who are passionate about making web development easier and more efficient.
+                    </p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
+                                KM
+                            </div>
+                            <div>
+                                <h3 class="font-medium text-gray-800">Kudzai Munyama</h3>
+                                <p class="text-sm text-gray-600">Lead Developer</p>
+                            </div>
+                        </div>
+                        
+                        <!-- <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-lg">
+                                JD
+                            </div>
+                            <div>
+                                <h3 class="font-medium text-gray-800">Jane Doe</h3>
+                                <p class="text-sm text-gray-600">Core Contributor</p>
+                            </div>
+                        </div> -->
+                        
+                        <!-- <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                                MS
+                            </div>
+                            <div>
+                                <h3 class="font-medium text-gray-800">Mike Smith</h3>
+                                <p class="text-sm text-gray-600">Documentation</p>
+                            </div>
+                        </div> -->
+                    </div>
+                    
+                    <div class="mt-8 text-center">
+                        <p class="text-gray-700 mb-4">Want to contribute to GreyCodeJS?</p>
+                        <a href="https://github.com/kculz/greycodejs/blob/main/CONTRIBUTING.md" target="_blank" class="inline-flex items-center px-6 py-2 border border-primary text-primary font-medium rounded-lg hover:bg-indigo-50 transition-colors">
+                            Contribute to GreyCodeJS
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </section>
+            
+            <footer class="mt-24 pt-8 border-t border-gray-200 text-center">
+                <p class="text-gray-600">© 2025 GreyCodeJS. All rights reserved.</p>
+                <div class="mt-4 flex justify-center space-x-6">
+                    <a href="https://github.com/kculz/greycodejs" class="text-gray-500 hover:text-primary transition-colors">
+                        <span class="sr-only">GitHub</span>
+                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                            <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
+                        </svg>
+                    </a>
+                    <a href="#" class="text-gray-500 hover:text-primary transition-colors">
+                        <span class="sr-only">Twitter</span>
+                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
+                        </svg>
+                    </a>
+                </div>
+            </footer>
         </main>
     </div>
+
+    <script>
+        // Mobile sidebar toggle
+        document.getElementById('sidebar-toggle').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.toggle('active');
+        });
+
+        // Close sidebar when clicking outside of it on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            
+            if (window.innerWidth <= 768 && sidebar.classList.contains('active') && 
+                !sidebar.contains(event.target) && event.target !== sidebarToggle && !sidebarToggle.contains(event.target)) {
+                sidebar.classList.remove('active');
+            }
+        });
+
+        // Smooth scroll for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 20,
+                        behavior: 'smooth'
+                    });
+                    
+                    // Close mobile sidebar after click
+                    if (window.innerWidth <= 768) {
+                        document.getElementById('sidebar').classList.remove('active');
+                    }
+                }
+            });
+        });
+    </script>
 </body>
 </html>
