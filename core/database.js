@@ -1,4 +1,3 @@
-// core/database.js
 const { Sequelize } = require('sequelize');
 const config = require('../config/database');
 
@@ -44,26 +43,29 @@ async function ensureDatabaseExists() {
   }
 }
 
-(async () => {
-  const { dialect, database, username, password, host } = config;
+// Create the sequelize instance first (outside the async function)
+const { dialect, database, username, password, host } = config;
+const sequelize = new Sequelize(database, username, password, {
+  host,
+  dialect,
+  logging: console.log,
+});
 
+// Export the sequelize instance
+module.exports = sequelize;
+
+// Initialize the database connection in the background
+(async () => {
   try {
     // Ensure the database exists (for MySQL and PostgreSQL)
     await ensureDatabaseExists();
 
-    // Connect to the actual database
-    const sequelize = new Sequelize(database, username, password, {
-      host,
-      dialect,
-      logging: console.log,
-    });
-
+    // Test the connection
     await sequelize.authenticate();
     console.log(`Connected to the ${dialect} database "${database}".`);
-
-    module.exports = sequelize;
   } catch (err) {
     console.error('Failed to connect to the database:', err.message);
-    process.exit(1); // Exit the process with failure code
+    // You might want to handle this error differently instead of exiting
+    // process.exit(1); // Exit the process with failure code
   }
 })();
