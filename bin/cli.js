@@ -649,6 +649,99 @@ module.exports = router;
   console.log(chalk.blue(`2. Run 'greycodejs migrate' to create the database table`));
 });
 
+
+// First, make sure you have inquirer installed
+// Run: npm install inquirer
+
+program
+  .command('setup-db')
+  .description('Interactive database configuration setup')
+  .action(async () => {
+    // Use dynamic import for ESM compatibility
+    const inquirer = (await import('inquirer')).default;
+    const configPath = path.resolve(process.cwd(), 'config/database.js');
+    
+    // Ensure config directory exists
+    const configDir = path.dirname(configPath);
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+
+    const questions = [
+      {
+        type: 'list',
+        name: 'dialect',
+        message: 'Database type:',
+        choices: ['postgres', 'mysql', 'sqlite', 'mssql']
+      },
+      {
+        type: 'input',
+        name: 'host',
+        message: 'Database host:',
+        default: 'localhost'
+      },
+      {
+        type: 'input',
+        name: 'port',
+        message: 'Database port:',
+        default: (answers) => {
+          switch(answers.dialect) {
+            case 'postgres': return '5432';
+            case 'mysql': return '3306';
+            case 'mssql': return '1433';
+            default: return '';
+          }
+        }
+      },
+      {
+        type: 'input',
+        name: 'database',
+        message: 'Database name:',
+        default: 'greycode_db'
+      },
+      {
+        type: 'input',
+        name: 'username',
+        message: 'Database username:',
+        default: 'postgres'
+      },
+      {
+        type: 'password',
+        name: 'password',
+        message: 'Database password:',
+        mask: '*'
+      }
+    ];
+
+    try {
+      const answers = await inquirer.prompt(questions);
+      
+      const configContent = `module.exports = {
+  development: ${JSON.stringify(answers, null, 2)},
+  test: {
+    ...${JSON.stringify(answers)},
+    database: 'test_${answers.database}'
+  },
+  production: {
+    ...${JSON.stringify(answers)},
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  }
+};`;
+      
+      fs.writeFileSync(configPath, configContent);
+      console.log(chalk.green('\nDatabase configuration created at:'), configPath);
+      console.log(chalk.yellow('\nMake sure to add this to your .gitignore:'));
+      console.log(chalk.gray('config/database.js'));
+    } catch (error) {
+      console.error(chalk.red('Error creating database config:'), error);
+    }
+  });
+
 // List all commands
 program
   .command('list-commands')
