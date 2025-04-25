@@ -1,71 +1,153 @@
-const { Sequelize } = require('sequelize');
-const config = require('../config/database');
+// core/database.js
+const { activeORM } = require('../config/orm');
+const logger = require('../utils/logger');
 
-async function ensureDatabaseExists() {
-  const { dialect, database, username, password, host } = config;
-
-  if (dialect === 'sqlite') {
-    // SQLite doesn't require database creation; it creates the file automatically
-    console.log(`Using SQLite database at "${database}".`);
-    return;
-  }
-
-  const adminSequelize = new Sequelize('', username, password, {
-    host,
-    dialect,
-    logging: false, // Disable logging for cleaner output
-  });
-
+async function initializeDatabase() {
   try {
-    console.log(`Checking if database "${database}" exists for dialect "${dialect}"...`);
+    logger.info(`Initializing database connection for ${activeORM}`);
     
-    if (dialect === 'mysql') {
-      // MySQL-specific syntax
-      await adminSequelize.query(`CREATE DATABASE IF NOT EXISTS \`${database}\`;`);
-    } else if (dialect === 'postgres') {
-      // PostgreSQL-specific syntax
-      const result = await adminSequelize.query(
-        `SELECT 1 FROM pg_database WHERE datname = '${database}';`
-      );
-
-      if (result[0].length === 0) {
-        await adminSequelize.query(`CREATE DATABASE "${database}";`);
-        console.log(`Database "${database}" created successfully.`);
-      } else {
-        console.log(`Database "${database}" already exists.`);
-      }
+    switch (activeORM) {
+      case 'sequelize':
+        return await initializeSequelize();
+      case 'mongoose':
+        return await initializeMongoose();
+      case 'prisma':
+        return await initializePrisma();
+      default:
+        throw new Error(`Unsupported ORM: ${activeORM}`);
     }
-  } catch (err) {
-    console.error(`Error while ensuring database exists: ${err.message}`);
-    throw err; // Rethrow to handle it in the main flow
-  } finally {
-    await adminSequelize.close();
+  } catch (error) {
+    logger.error('Database initialization failed:', error);
+    throw error;
   }
 }
 
-// Create the sequelize instance first (outside the async function)
-const { dialect, database, username, password, host } = config;
-const sequelize = new Sequelize(database, username, password, {
-  host,
-  dialect,
-  logging: console.log,
-});
 
-// Export the sequelize instance
-module.exports = sequelize;
-
-// Initialize the database connection in the background
-(async () => {
+async function initializeSequelize() {
+  const { Sequelize } = require('sequelize');
+  const config = require('../config/database');
+  
+  // First try to connect directly
   try {
-    // Ensure the database exists (for MySQL and PostgreSQL)
-    await ensureDatabaseExists();
-
-    // Test the connection
+    const sequelize = new Sequelize(config.database, config.username, config.password, {
+      host: config.host,
+      port: config.port,
+      dialect: config.dialect,
+      logging: (msg) => logger.debug(msg),
+      pool: config.pool || {
+        max: 5,
+        min: 0,
+        acquire: 30000,
+        idle: 10000
+      }
+    });
+    
     await sequelize.authenticate();
-    console.log(`Connected to the ${dialect} database "${database}".`);
-  } catch (err) {
-    console.error('Failed to connect to the database:', err.message);
-    // You might want to handle this error differently instead of exiting
-    // process.exit(1); // Exit the process with failure code
+    return sequelize;
+  } catch (error) {
+    if (error.original && error.original.code === 'ER_BAD_DB_ERROR') {
+      // Database doesn't exist - create it
+      logger.warn(`Database ${config.database} doesn't exist, attempting to create it...`);
+      return await createDatabaseAndConnect(config);
+    }
+    throw error;
   }
-})();
+}
+
+
+
+async function createDatabaseAndConnect(config) {
+  const { Sequelize } = require('sequelize');
+  
+  // Create admin connection without specifying database
+  const adminSequelize = new Sequelize('', config.username, config.password, {
+    host: config.host,
+    port: config.port,
+    dialect: config.dialect,
+    logging: false
+  });
+
+  try {
+    // Create the database
+    switch (config.dialect) {
+      case 'mysql':
+        await adminSequelize.query(`CREATE DATABASE IF NOT EXISTS \`${config.database}\`;`);
+        break;
+      case 'postgres':
+        await adminSequelize.query(`CREATE DATABASE "${config.database}";`);
+        break;
+      case 'mssql':
+        await adminSequelize.query(`CREATE DATABASE [${config.database}];`);
+        break;
+      default:
+        throw new Error(`Database creation not supported for dialect: ${config.dialect}`);
+    }
+    logger.info(`Successfully created database: ${config.database}`);
+  } finally {
+    await adminSequelize.close();
+  }
+
+  // Now connect to the new database
+  const sequelize = new Sequelize(config.database, config.username, config.password, {
+    host: config.host,
+    port: config.port,
+    dialect: config.dialect,
+    logging: (msg) => logger.debug(msg),
+    pool: config.pool || {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  });
+
+  await sequelize.authenticate();
+  return sequelize;
+}
+
+async function initializeMongoose() {
+  const mongoose = require('mongoose');
+  const config = require('../config/database');
+  
+  mongoose.connection.on('connected', () => {
+    logger.debug('Mongoose connected to DB');
+  });
+  
+  mongoose.connection.on('error', (err) => {
+    logger.error('Mongoose connection error:', err);
+  });
+  
+  mongoose.connection.on('disconnected', () => {
+    logger.warn('Mongoose disconnected from DB');
+  });
+
+  await mongoose.connect(config.uri || config, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+  });
+  
+  return mongoose;
+}
+
+async function initializePrisma() {
+  const { PrismaClient } = require('@prisma/client');
+  
+  const prisma = new PrismaClient({
+    log: [
+      { level: 'warn', emit: 'event' },
+      { level: 'info', emit: 'event' },
+      { level: 'error', emit: 'event' }
+    ]
+  });
+  
+  prisma.$on('warn', (e) => logger.warn(e.message));
+  prisma.$on('info', (e) => logger.info(e.message));
+  prisma.$on('error', (e) => logger.error(e.message));
+  
+  await prisma.$connect();
+  return prisma;
+}
+
+module.exports = {
+  initializeDatabase
+};

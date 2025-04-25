@@ -2,18 +2,16 @@ const express = require('express');
 const path = require('path');
 const applyMiddleware = require('./core/middleware');
 const Router = require('./core/router');
-const sequelize = require('./core/database');
 const asset = require('./core/assetHelper');
 const { port } = require('./config/app');
 const loadRoutes = require('./core/routeLoader');
-const logger = require('./utils/logger'); // Import the logger
+const logger = require('./utils/logger');
+const { initializeDatabase } = require('./core/database'); // Updated database initialization
 
 const app = express();
 
 // Initialize logger
-app.locals.logger = logger; // Make logger available throughout the app
-
-// Log app startup
+app.locals.logger = logger;
 logger.info('Initializing Grey.js application...');
 
 // Set up EJS view engine
@@ -34,19 +32,10 @@ try {
   process.exit(1);
 }
 
-// Load dynamic routes
-const routesDir = path.resolve(__dirname, './routes');
-try {
-  loadRoutes(app, routesDir);
-  logger.debug(`Routes loaded from ${routesDir}`);
-} catch (err) {
-  logger.error('Failed to load routes:', err);
-}
-
 // Custom router
 const router = new Router();
 router.get('/', (req, res) => {
-  req.logger = logger; // Attach logger to request object
+  req.logger = logger;
   logger.info('Homepage accessed');
   
   res.render('home', {
@@ -60,7 +49,16 @@ router.get('/', (req, res) => {
 app.use(router.use());
 logger.debug('Custom router mounted');
 
-// Error handling middleware (should be last)
+// Load dynamic routes
+const routesDir = path.resolve(__dirname, './routes');
+try {
+  loadRoutes(app, routesDir);
+  logger.debug(`Routes loaded from ${routesDir}`);
+} catch (err) {
+  logger.error('Failed to load routes:', err);
+}
+
+// Error handling middleware
 app.use((err, req, res, next) => {
   logger.error({
     message: err.message,
@@ -75,20 +73,24 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Database connection
-sequelize.authenticate()
-  .then(() => {
+// Database connection and server startup
+(async () => {
+  try {
+    // Initialize the appropriate database connection
+    const db = await initializeDatabase();
+    app.locals.db = db; // Make database instance available throughout the app
+    
     logger.info('Database connection established');
     
     app.listen(port, () => {
       logger.info(`Server running on port ${port}`);
       logger.info(`Access the app: http://localhost:${port}`);
     });
-  })
-  .catch(err => {
+  } catch (err) {
     logger.error('Unable to connect to the database:', err);
     process.exit(1);
-  });
+  }
+})();
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {

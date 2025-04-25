@@ -17,96 +17,154 @@ program
 // Add the create-model command
 program
   .command('create-model <name>')
-  .description('Generate a new Sequelize model')
+  .description('Generate a new model for the active ORM')
   .action((name) => {
-    // Convert model name to PascalCase
+    const { activeORM } = require('../config/orm');
     const modelName = name.charAt(0).toUpperCase() + name.slice(1);
+    const modelsPath = path.resolve(process.cwd(), 'models');
+    
+    if (!fs.existsSync(modelsPath)) {
+      fs.mkdirSync(modelsPath, { recursive: true });
+    }
 
-    // Define the file content
-    const content = `
-module.exports = (sequelize, DataTypes) => {
+    let content;
+    const targetPath = path.join(modelsPath, `${modelName}.js`);
+
+    switch (activeORM) {
+      case 'sequelize':
+        content = `module.exports = (sequelize, DataTypes) => {
   const ${modelName} = sequelize.define('${modelName}', {
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    exampleField: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
+    // Add your fields here
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE
   });
 
   ${modelName}.associate = (models) => {
     // Define associations here
-    // Example: ${modelName}.hasMany(models.OtherModel);
   };
 
   return ${modelName};
-};
-`;
+};`;
+        break;
 
-    // Define the target path
-    const modelsPath = path.resolve(process.cwd(), 'models');
-    const targetPath = path.join(modelsPath, `${modelName}.js`);
+      case 'mongoose':
+        content = `const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-    // Ensure the models directory exists
-    if (!fs.existsSync(modelsPath)) {
-      fs.mkdirSync(modelsPath, { recursive: true });
+const ${modelName}Schema = new Schema({
+  // Add your fields here
+}, { timestamps: true });
+
+module.exports = mongoose.model('${modelName}', ${modelName}Schema);`;
+        break;
+
+      case 'prisma':
+        console.log(chalk.yellow('For Prisma, add your model to prisma/schema.prisma:'));
+        console.log(chalk.gray(`
+model ${modelName} {
+  id        String   @id @default(uuid())
+  // Add your fields here
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}`));
+        return; // Prisma models are defined in schema.prisma
+
+      default:
+        console.error(chalk.red(`Unsupported ORM: ${activeORM}`));
+        return;
     }
 
-    // Write the file
     fs.writeFileSync(targetPath, content);
-    console.log(chalk.green(`Model ${modelName} created at ${targetPath}`));
+    console.log(chalk.green(`${activeORM} model ${modelName} created at ${targetPath}`));
   });
 
 // Migrate command to sync models with the database
 program
   .command('migrate')
-  .description('Sync all models with the database')
-  .action(async () => {
-    const configPath = path.resolve(process.cwd(), 'config/database.js');
-    const modelsPath = path.resolve(process.cwd(), 'models');
-
-    // Load database configuration
-    const dbConfig = require(configPath);
-    const sequelize = new Sequelize(dbConfig);
-
-    // Import all models
-    const models = {};
-    fs.readdirSync(modelsPath)
-      .filter((file) => file.endsWith('.js'))
-      .forEach((file) => {
-        const modelPath = path.join(modelsPath, file);
-        console.log(`Loading model from: ${modelPath}`);  // Debugging line
-        const model = require(modelPath);
-
-        // Ensure model is a function
-        if (typeof model !== 'function') {
-          console.error(chalk.red(`Error: Model in ${modelPath} is not a function.`));
-          return;
-        }
-
-        console.log(`Model ${file} loaded successfully.`);  // Debugging line
-        models[model.name] = model(sequelize, Sequelize.DataTypes);
-      });
-
-    // Apply model associations
-    Object.keys(models).forEach((modelName) => {
-      if (models[modelName].associate) {
-        models[modelName].associate(models);
-      }
-    });
-
-    // Sync models with the database
+  .description('Run migrations for the active ORM')
+  .option('--force', 'Force sync models (drops existing tables)', false)
+  .action(async (options) => {
+    const { activeORM } = require('../config/orm');
+    const logger = require('../utils/logger');
+    const db = require('../core/database');
+    const migrationHelper = require('../utils/migration-helper');
+    
     try {
-      await sequelize.sync({ alter: true });
-      console.log(chalk.green('Database synced successfully!'));
+      switch (activeORM) {
+        case 'sequelize':
+          const sequelize = await db.initializeDatabase();
+          try {
+            // Sync models first if force flag is set
+            if (options.force) {
+              logger.warn('Forcing model synchronization...');
+              await sequelize.sync({ force: true });
+              logger.info('Models force-synced successfully');
+            }
+            
+            // Then run migrations
+            await migrationHelper.runMigrations(sequelize);
+          } finally {
+            await sequelize.close();
+          }
+          break;
+          
+        case 'mongoose':
+          logger.info('Mongoose does not require migrations - schema updates are automatic');
+          break;
+          
+        case 'prisma':
+          const { execSync } = require('child_process');
+          logger.info('Running Prisma migrations...');
+          execSync('npx prisma migrate dev', { stdio: 'inherit' });
+          logger.success('Prisma migrations completed successfully');
+          break;
+          
+        default:
+          throw new Error(`Unsupported ORM: ${activeORM}`);
+      }
     } catch (error) {
-      console.error(chalk.red('Error syncing database:'), error.message);
-    } finally {
-      await sequelize.close();
+      logger.error('Migration failed:', error);
+      process.exit(1);
     }
+  });
+
+
+  program
+  .command('migrate:status')
+  .description('Show migration status')
+  .action(async () => {
+    const { activeORM } = require('../config/orm');
+    
+    if (activeORM !== 'sequelize') {
+      console.log(chalk.blue(`Migration status not available for ${activeORM}`));
+      return;
+    }
+
+    const { Sequelize } = require('sequelize');
+    const sequelizeConfig = require('../config/database');
+    const sequelize = new Sequelize(sequelizeConfig);
+    const umzug = migrationHelper.getMigrator(sequelize);
+
+    const [pending, executed] = await Promise.all([
+      umzug.pending(),
+      umzug.executed()
+    ]);
+
+    console.log(chalk.blue('\nMigration Status:'));
+    console.log(chalk.green(`Executed: ${executed.length}`));
+    console.log(chalk.yellow(`Pending: ${pending.length}`));
+
+    if (pending.length > 0) {
+      console.log(chalk.yellow('\nPending Migrations:'));
+      pending.forEach(m => console.log(`- ${m.name}`));
+    }
+
+    await sequelize.close();
   });
 
 // Command to create Controllers
@@ -652,93 +710,190 @@ module.exports = router;
 
 // First, make sure you have inquirer installed
 // Run: npm install inquirer
-
 program
   .command('setup-db')
-  .description('Interactive database configuration setup')
+  .description('Configure database settings for the active ORM')
   .action(async () => {
-    // Use dynamic import for ESM compatibility
     const inquirer = (await import('inquirer')).default;
-    const configPath = path.resolve(process.cwd(), 'config/database.js');
+    const configDir = path.resolve(process.cwd(), 'config');
     
     // Ensure config directory exists
-    const configDir = path.dirname(configPath);
     if (!fs.existsSync(configDir)) {
       fs.mkdirSync(configDir, { recursive: true });
     }
 
-    const questions = [
-      {
-        type: 'list',
-        name: 'dialect',
-        message: 'Database type:',
-        choices: ['postgres', 'mysql', 'sqlite', 'mssql']
-      },
-      {
-        type: 'input',
-        name: 'host',
-        message: 'Database host:',
-        default: 'localhost'
-      },
-      {
-        type: 'input',
-        name: 'port',
-        message: 'Database port:',
-        default: (answers) => {
-          switch(answers.dialect) {
-            case 'postgres': return '5432';
-            case 'mysql': return '3306';
-            case 'mssql': return '1433';
-            default: return '';
-          }
-        }
-      },
-      {
-        type: 'input',
-        name: 'database',
-        message: 'Database name:',
-        default: 'greycode_db'
-      },
-      {
-        type: 'input',
-        name: 'username',
-        message: 'Database username:',
-        default: 'postgres'
-      },
-      {
-        type: 'password',
-        name: 'password',
-        message: 'Database password:',
-        mask: '*'
-      }
-    ];
-
     try {
-      const answers = await inquirer.prompt(questions);
-      
-      const configContent = `module.exports = {
-  development: ${JSON.stringify(answers, null, 2)},
-  test: {
-    ...${JSON.stringify(answers)},
-    database: 'test_${answers.database}'
-  },
-  production: {
-    ...${JSON.stringify(answers)},
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
-    }
-  }
+      // Try to read existing ORM config
+      let activeORM;
+      try {
+        const ormConfig = require(path.join(configDir, 'orm.js'));
+        activeORM = ormConfig.activeORM;
+      } catch {
+        activeORM = null;
+      }
+
+      // If no ORM configured, ask the user
+      if (!activeORM) {
+        const { selectedORM } = await inquirer.prompt({
+          type: 'list',
+          name: 'selectedORM',
+          message: 'Select your ORM:',
+          choices: ['sequelize', 'mongoose', 'prisma'],
+          default: 'sequelize'
+        });
+        activeORM = selectedORM;
+        
+        // Write basic ORM config
+        fs.writeFileSync(
+          path.join(configDir, 'orm.js'),
+          `module.exports = {\n  activeORM: '${activeORM}'\n};`
+        );
+      }
+
+      // Configure database based on active ORM
+      const dbConfigPath = path.join(configDir, 'database.js');
+      let dbConfigContent;
+
+      if (activeORM === 'sequelize') {
+        const answers = await inquirer.prompt([
+          {
+            type: 'list',
+            name: 'dialect',
+            message: 'Database type:',
+            choices: ['postgres', 'mysql', 'sqlite', 'mssql'],
+            default: 'postgres'
+          },
+          {
+            type: 'input',
+            name: 'host',
+            message: 'Database host:',
+            default: 'localhost',
+            when: (answers) => answers.dialect !== 'sqlite'
+          },
+          {
+            type: 'input',
+            name: 'port',
+            message: 'Database port:',
+            default: (answers) => {
+              switch(answers.dialect) {
+                case 'postgres': return '5432';
+                case 'mysql': return '3306';
+                case 'mssql': return '1433';
+                default: return '';
+              }
+            },
+            when: (answers) => answers.dialect !== 'sqlite'
+          },
+          {
+            type: 'input',
+            name: 'database',
+            message: 'Database name:',
+            default: 'greycode_db',
+            when: (answers) => answers.dialect !== 'sqlite'
+          },
+          {
+            type: 'input',
+            name: 'username',
+            message: 'Database username:',
+            default: 'postgres',
+            when: (answers) => answers.dialect !== 'sqlite'
+          },
+          {
+            type: 'password',
+            name: 'password',
+            message: 'Database password:',
+            mask: '*',
+            when: (answers) => answers.dialect !== 'sqlite'
+          },
+          {
+            type: 'input',
+            name: 'storage',
+            message: 'SQLite storage path:',
+            default: 'database.sqlite',
+            when: (answers) => answers.dialect === 'sqlite'
+          }
+        ]);
+
+        dbConfigContent = `module.exports = ${JSON.stringify(answers, null, 2)};`;
+      }
+      else if (activeORM === 'mongoose') {
+        const answers = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'uri',
+            message: 'MongoDB connection URI:',
+            default: 'mongodb://localhost:27017/greycode_db'
+          }
+        ]);
+
+        dbConfigContent = `module.exports = '${answers.uri}';`;
+      }
+      else if (activeORM === 'prisma') {
+        const answers = await inquirer.prompt([
+          {
+            type: 'list',
+            name: 'provider',
+            message: 'Database provider:',
+            choices: ['postgresql', 'mysql', 'sqlite', 'sqlserver', 'mongodb'],
+            default: 'postgresql'
+          },
+          {
+            type: 'input',
+            name: 'url',
+            message: 'Database connection URL:',
+            default: (answers) => {
+              switch(answers.provider) {
+                case 'postgresql': return 'postgresql://user:password@localhost:5432/greycode_db';
+                case 'mysql': return 'mysql://user:password@localhost:3306/greycode_db';
+                case 'sqlite': return 'file:./dev.db';
+                case 'sqlserver': return 'sqlserver://localhost:1433;database=greycode_db;user=sa;password=password';
+                case 'mongodb': return 'mongodb://user:password@localhost:27017/greycode_db';
+                default: return '';
+              }
+            }
+          }
+        ]);
+
+        dbConfigContent = `module.exports = {
+  provider: '${answers.provider}',
+  url: '${answers.url}'
 };`;
-      
-      fs.writeFileSync(configPath, configContent);
-      console.log(chalk.green('\nDatabase configuration created at:'), configPath);
+      }
+
+      // Write only to database.js
+      fs.writeFileSync(dbConfigPath, dbConfigContent);
+      console.log(chalk.green(`\nDatabase configuration for ${activeORM} created at:`), dbConfigPath);
       console.log(chalk.yellow('\nMake sure to add this to your .gitignore:'));
       console.log(chalk.gray('config/database.js'));
+
+      // Additional instructions for Prisma
+      if (activeORM === 'prisma') {
+        console.log(chalk.blue('\nFor Prisma, you also need to:'));
+        console.log('1. Create a prisma/schema.prisma file with your models');
+        console.log('2. Run "npx prisma generate"');
+        console.log('3. Run "npx prisma migrate dev"');
+      }
+
     } catch (error) {
-      console.error(chalk.red('Error creating database config:'), error);
+      console.error(chalk.red('Error setting up database:'), error.message);
+    }
+  });
+
+
+  program
+  .command('setup-prisma')
+  .description('Initialize Prisma in the project')
+  .action(() => {
+    const { execSync } = require('child_process');
+    try {
+      console.log(chalk.blue('Setting up Prisma...'));
+      execSync('npx prisma init', { stdio: 'inherit' });
+      console.log(chalk.green('Prisma initialized successfully'));
+      console.log(chalk.blue('Next steps:'));
+      console.log('1. Configure your database in prisma/schema.prisma');
+      console.log('2. Run "greycodejs migrate" to apply migrations');
+    } catch (error) {
+      console.error(chalk.red('Prisma setup failed:'), error);
     }
   });
 
