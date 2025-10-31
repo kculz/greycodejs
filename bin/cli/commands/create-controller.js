@@ -16,7 +16,7 @@ module.exports = (program) => {
       }
 
       const content = `
-const { ${name.charAt(0).toUpperCase() + name.slice(1)} } = require('../models');
+const { ${name.charAt(0).toUpperCase() + name.slice(1)} } = require('../models/models');
 
 // Create
 const create = async (req, res) => {

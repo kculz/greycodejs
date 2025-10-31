@@ -6,7 +6,8 @@ const asset = require('./core/assetHelper');
 const { port } = require('./config/app');
 const loadRoutes = require('./core/routeLoader');
 const logger = require('./utils/logger');
-const { initializeDatabase } = require('./core/database'); // Updated database initialization
+const { initializeDatabase } = require('./core/database');
+const initializeModels = require('./models'); // Import model initializer
 
 const app = express();
 
@@ -58,7 +59,7 @@ try {
   logger.error('Failed to load routes:', err);
 }
 
-// Error handling middleware
+// Error handling middleware (must be after routes)
 app.use((err, req, res, next) => {
   logger.error({
     message: err.message,
@@ -76,18 +77,36 @@ app.use((err, req, res, next) => {
 // Database connection and server startup
 (async () => {
   try {
-    // Initialize the appropriate database connection
-    const db = await initializeDatabase();
-    app.locals.db = db; // Make database instance available throughout the app
-    
+    // Initialize the database connection
+    const sequelize = await initializeDatabase();
     logger.info('Database connection established');
     
+    // Initialize all models
+    const models = initializeModels(sequelize);
+    logger.info('Models initialized successfully');
+    
+    // Make database and models available throughout the app
+    app.locals.db = sequelize;
+    app.locals.models = models;
+    
+    // Also make models available globally for controllers
+    // This allows: const { User } = require('../models')
+    global.models = models;
+    
+    // Sync models with database (use { alter: true } in development, avoid in production)
+    if (process.env.NODE_ENV !== 'production') {
+      await sequelize.sync({ alter: false });
+      logger.info('Database synchronized');
+    }
+    
+    // Start the server
     app.listen(port, () => {
       logger.info(`Server running on port ${port}`);
       logger.info(`Access the app: http://localhost:${port}`);
+      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
   } catch (err) {
-    logger.error('Unable to connect to the database:', err);
+    logger.error('Unable to start application:', err);
     process.exit(1);
   }
 })();
@@ -98,6 +117,25 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
+// Handle unhandled promise rejections
 process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled Rejection:', reason);
+  process.exit(1);
 });
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM received, shutting down gracefully');
+  try {
+    if (app.locals.db) {
+      await app.locals.db.close();
+      logger.info('Database connection closed');
+    }
+    process.exit(0);
+  } catch (error) {
+    logger.error('Error during shutdown:', error);
+    process.exit(1);
+  }
+});
+
+module.exports = app;
