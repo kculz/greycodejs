@@ -1,6 +1,6 @@
 // core/orm/index.js
 const { activeORM } = require('../../config/orm');
-const logger = require('../logger');
+const logger = require('../../utils/logger');
 
 class ORMFactory {
   static async initialize() {
