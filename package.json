@@ -4,19 +4,31 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "cli": "node bin/cli.js"
   },
   "bin": {
-    "greycodejs": "./bin/cli/index.js"
+    "greycodejs": "./bin/cli.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "express",
+    "framework",
+    "mvc",
+    "orm",
+    "sequelize",
+    "cli",
+    "scaffolding"
+  ],
+  "author": "Kudzai Munyama",
   "license": "ISC",
   "dependencies": {
     "@faker-js/faker": "^9.3.0",
     "@greycode/env_init": "^1.0.5",
     "@greycode/gitignore_init": "^0.0.2",
     "bcryptjs": "^2.4.3",
+    "chalk": "^4.1.2",
     "commander": "^12.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -32,5 +44,9 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
   }
 }
