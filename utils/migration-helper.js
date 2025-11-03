@@ -1,12 +1,12 @@
 // utils/migration-helper.js
 const path = require('path');
+const fs = require('fs'); // ✅ FIXED: Added missing import
 const { Sequelize } = require('sequelize');
-const { Umzug } = require('umzug');
+const { Umzug, SequelizeStorage } = require('umzug');
 const logger = require('./logger');
 
 module.exports = {
-
-    /**
+  /**
    * Verify database connection (without failing if database doesn't exist)
    * @param {Sequelize} sequelize 
    * @returns {Promise<boolean>}
@@ -31,7 +31,7 @@ module.exports = {
   async initMetadataTable(sequelize) {
     try {
       const query = `
-        CREATE TABLE IF NOT EXISTS sequelize_meta (
+        CREATE TABLE IF NOT EXISTS SequelizeMeta (
           name VARCHAR(255) NOT NULL,
           PRIMARY KEY (name),
           UNIQUE KEY name_unique (name)
@@ -45,7 +45,6 @@ module.exports = {
     }
   },
 
-  
   /**
    * Verify database connection and initialize metadata table
    * @param {Sequelize} sequelize 
@@ -84,10 +83,10 @@ module.exports = {
             SELECT table_name 
             FROM information_schema.tables 
             WHERE table_schema = '${sequelize.config.database}' 
-            AND table_name = 'sequelize_meta'
+            AND table_name = 'SequelizeMeta'
           `,
           createTable: `
-            CREATE TABLE sequelize_meta (
+            CREATE TABLE IF NOT EXISTS SequelizeMeta (
               name VARCHAR(255) NOT NULL,
               PRIMARY KEY (name),
               UNIQUE KEY name_unique (name)
@@ -99,10 +98,10 @@ module.exports = {
           checkTable: `
             SELECT table_name 
             FROM information_schema.tables 
-            WHERE table_name = 'sequelize_meta'
+            WHERE table_name = 'SequelizeMeta'
           `,
           createTable: `
-            CREATE TABLE IF NOT EXISTS "sequelize_meta" (
+            CREATE TABLE IF NOT EXISTS "SequelizeMeta" (
               name VARCHAR(255) PRIMARY KEY NOT NULL,
               UNIQUE (name)
             );
@@ -113,10 +112,10 @@ module.exports = {
           checkTable: `
             SELECT name 
             FROM sqlite_master 
-            WHERE type='table' AND name='sequelize_meta'
+            WHERE type='table' AND name='SequelizeMeta'
           `,
           createTable: `
-            CREATE TABLE IF NOT EXISTS \`sequelize_meta\` (
+            CREATE TABLE IF NOT EXISTS \`SequelizeMeta\` (
               \`name\` VARCHAR(255) NOT NULL UNIQUE,
               PRIMARY KEY (\`name\`)
             );
@@ -127,13 +126,13 @@ module.exports = {
           checkTable: `
             SELECT name 
             FROM sys.tables 
-            WHERE name = 'sequelize_meta'
+            WHERE name = 'SequelizeMeta'
           `,
           createTable: `
-            CREATE TABLE [sequelize_meta] (
+            CREATE TABLE [SequelizeMeta] (
               [name] NVARCHAR(255) NOT NULL,
               PRIMARY KEY ([name]),
-              CONSTRAINT [sequelize_meta_name_unique] UNIQUE ([name])
+              CONSTRAINT [SequelizeMeta_name_unique] UNIQUE ([name])
             );
           `
         };
@@ -148,9 +147,17 @@ module.exports = {
    * @returns {Umzug}
    */
   getMigrator(sequelize) {
+    const migrationsPath = path.join(process.cwd(), 'migrations');
+    
+    // Ensure migrations directory exists
+    if (!fs.existsSync(migrationsPath)) {
+      fs.mkdirSync(migrationsPath, { recursive: true });
+      logger.debug(`Created migrations directory: ${migrationsPath}`);
+    }
+
     return new Umzug({
       migrations: {
-        glob: path.join(process.cwd(), 'migrations', '*.js'),
+        glob: path.join(migrationsPath, '*.js'),
         resolve: ({ name, path: filepath }) => {
           const migration = require(filepath);
           return {
@@ -166,28 +173,10 @@ module.exports = {
           };
         }
       },
-      storage: {
-        async executed() {
-          const [results] = await sequelize.query(
-            'SELECT name FROM sequelize_meta ORDER BY name'
-          );
-          return results.map(row => row.name);
-        },
-        async logMigration({ name }) {
-          await sequelize.query(
-            'INSERT INTO sequelize_meta (name) VALUES (?)',
-            { replacements: [name] }
-          );
-          logger.debug(`Logged migration: ${name}`);
-        },
-        async unlogMigration({ name }) {
-          await sequelize.query(
-            'DELETE FROM sequelize_meta WHERE name = ?',
-            { replacements: [name] }
-          );
-          logger.debug(`Unlogged migration: ${name}`);
-        }
-      },
+      storage: new SequelizeStorage({ 
+        sequelize,
+        tableName: 'SequelizeMeta'
+      }),
       logger: {
         info: (msg) => logger.info(msg),
         warn: (msg) => logger.warn(msg),
@@ -214,8 +203,10 @@ module.exports = {
       }
 
       logger.info(`Running ${pending.length} pending migration(s)...`);
-      await umzug.up();
-      logger.success('Migrations completed successfully');
+      const executed = await umzug.up();
+      
+      // ✅ FIXED: Use logger.info instead of logger.success
+      logger.info(`✅ Successfully executed ${executed.length} migration(s)`);
     } catch (error) {
       logger.error('Migration failed:', error);
       throw error;
@@ -240,9 +231,34 @@ module.exports = {
 
       logger.info('Undoing last migration...');
       await umzug.down();
-      logger.success('Migration undone successfully');
+      logger.info('✅ Migration undone successfully');
     } catch (error) {
       logger.error('Failed to undo migration:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get migration status
+   * @param {Sequelize} sequelize 
+   * @returns {Promise<object>}
+   */
+  async getMigrationStatus(sequelize) {
+    try {
+      await this.verifyDatabaseSetup(sequelize);
+      const umzug = this.getMigrator(sequelize);
+      
+      const [pending, executed] = await Promise.all([
+        umzug.pending(),
+        umzug.executed()
+      ]);
+
+      return {
+        pending: pending.map(m => m.name),
+        executed: executed.map(m => m.name)
+      };
+    } catch (error) {
+      logger.error('Failed to get migration status:', error);
       throw error;
     }
   },
@@ -266,54 +282,86 @@ module.exports = {
     const filepath = path.join(migrationsPath, filename);
 
     const content = options.model 
-      ? this.generateModelMigration(name.toLowerCase(), options.fields || {})
-      : this.generateGenericMigration();
+      ? this.generateModelMigration(name, options.fields || {})
+      : this.generateGenericMigration(name);
 
     fs.writeFileSync(filepath, content);
-    logger.info(`Created migration file: ${filename}`);
+    logger.info(`✅ Created migration file: ${filename}`);
     return filepath;
   },
 
   /**
    * Generate model migration template
-   * @param {string} modelName 
+   * @param {string} name 
    * @param {object} fields 
    * @returns {string}
    */
-  generateModelMigration(modelName, fields) {
-    const columns = Object.entries(fields)
-      .map(([name, def]) => this.generateColumnDefinition(name, def))
-      .join(',\n    ');
+  generateModelMigration(name, fields) {
+    const tableName = name.toLowerCase() + 's'; // Simple pluralization
+    
+    let columns = `      id: {
+        type: Sequelize.UUID,
+        defaultValue: Sequelize.UUIDV4,
+        primaryKey: true,
+        allowNull: false
+      },
+      createdAt: {
+        type: Sequelize.DATE,
+        allowNull: false
+      },
+      updatedAt: {
+        type: Sequelize.DATE,
+        allowNull: false
+      }`;
+
+    // Add custom fields if provided
+    if (Object.keys(fields).length > 0) {
+      const customFields = Object.entries(fields)
+        .map(([fieldName, fieldDef]) => this.generateColumnDefinition(fieldName, fieldDef))
+        .join(',\n      ');
+      columns = customFields + ',\n      ' + columns;
+    }
 
     return `'use strict';
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('${modelName}', {
+    await queryInterface.createTable('${tableName}', {
 ${columns}
     });
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('${modelName}');
+    await queryInterface.dropTable('${tableName}');
   }
 };`;
   },
 
   /**
    * Generate generic migration template
+   * @param {string} name 
    * @returns {string}
    */
-  generateGenericMigration() {
+  generateGenericMigration(name) {
     return `'use strict';
+
+/**
+ * Migration: ${name}
+ * Created: ${new Date().toISOString()}
+ */
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     // Add migration logic here
+    // Example: await queryInterface.addColumn('users', 'email', {
+    //   type: Sequelize.STRING,
+    //   allowNull: true
+    // });
   },
 
   down: async (queryInterface, Sequelize) => {
     // Add rollback logic here
+    // Example: await queryInterface.removeColumn('users', 'email');
   }
 };`;
   },
@@ -341,6 +389,9 @@ module.exports = {
     }
     if (definition.autoIncrement) {
       props.push('autoIncrement: true');
+    }
+    if (definition.unique) {
+      props.push('unique: true');
     }
     if (definition.defaultValue !== undefined) {
       props.push(`defaultValue: ${JSON.stringify(definition.defaultValue)}`);
