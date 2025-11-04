@@ -2,7 +2,7 @@ module.exports = {
   "dialect": "mysql",
   "host": "localhost",
   "port": "3306",
-  "database": "test_db",
+  "database": "greycode_db",
   "username": "root",
   "password": ""
 };

@@ -2,18 +2,20 @@ const express = require('express');
 const path = require('path');
 const applyMiddleware = require('./core/middleware');
 const Router = require('./core/router');
-const asset = require('./core/assetHelper');
 const { port } = require('./config/app');
 const loadRoutes = require('./core/routeLoader');
 const logger = require('./utils/logger');
-const { initializeDatabase } = require('./core/database');
-const initializeModels = require('./models'); // Import model initializer
+const { initializeDatabase, closeDatabase } = require('./core/database');
+const initializeModels = require('./models');
+const { activeORM } = require('./config/orm');
 
 const app = express();
 
 // Initialize logger
 app.locals.logger = logger;
-logger.info('Initializing Grey.js application...');
+logger.info('Initializing GreyCodeJS application...');
+logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+logger.info(`Active ORM: ${activeORM.toUpperCase()}`);
 
 // Set up EJS view engine
 app.set('view engine', 'ejs');
@@ -33,14 +35,12 @@ try {
   process.exit(1);
 }
 
-// Custom router
+// Custom router for homepage
 const router = new Router();
 router.get('/', (req, res) => {
-  req.logger = logger;
   logger.info('Homepage accessed');
-  
   res.render('home', {
-    title: 'Grey.js - The Express.js Framework',
+    title: 'GreyCodeJS - The Express.js Framework',
     devs: [
       { name: 'Kudzai Munyama', role: 'Lead Developer' },
     ],
@@ -48,19 +48,23 @@ router.get('/', (req, res) => {
 });
 
 app.use(router.use());
-logger.debug('Custom router mounted');
+logger.debug('Homepage router mounted');
 
-// Load dynamic routes
-const routesDir = path.resolve(__dirname, './routes');
-try {
-  loadRoutes(app, routesDir);
-  logger.debug(`Routes loaded from ${routesDir}`);
-} catch (err) {
-  logger.error('Failed to load routes:', err);
-}
+// NOTE: Dynamic routes will be loaded AFTER database and models are initialized
 
-// Error handling middleware (must be after routes)
-app.use((err, req, res, next) => {
+// 404 handler (will be added after routes)
+const notFoundHandler = (req, res) => {
+  logger.warn(`404 - Route not found: ${req.method} ${req.path}`);
+  res.status(404).json({
+    success: false,
+    error: 'Route not found',
+    path: req.path,
+    method: req.method
+  });
+};
+
+// Error handling middleware
+const errorHandler = (err, req, res, next) => {
   logger.error({
     message: err.message,
     stack: err.stack,
@@ -70,72 +74,179 @@ app.use((err, req, res, next) => {
   });
 
   res.status(err.statusCode || 500).json({
-    error: err.message || 'Internal Server Error'
+    success: false,
+    error: process.env.NODE_ENV === 'production' 
+      ? 'Internal Server Error' 
+      : err.message,
+    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
   });
-});
+};
 
-// Database connection and server startup
-(async () => {
+/**
+ * Initialize database and start server
+ */
+async function startApplication() {
+  let dbInstance = null;
+
   try {
-    // Initialize the database connection
-    const sequelize = await initializeDatabase();
-    logger.info('Database connection established');
+    // Initialize database connection
+    logger.info('Connecting to database...');
+    dbInstance = await initializeDatabase();
+    logger.info('✅ Database connection established successfully');
     
-    // Initialize all models
-    const models = initializeModels(sequelize);
-    logger.info('Models initialized successfully');
+    // Initialize models based on active ORM
+    let models = null;
     
-    // Make database and models available throughout the app
-    app.locals.db = sequelize;
-    app.locals.models = models;
-    
-    // Also make models available globally for controllers
-    // This allows: const { User } = require('../models')
-    global.models = models;
-    
-    // Sync models with database (use { alter: true } in development, avoid in production)
-    if (process.env.NODE_ENV !== 'production') {
-      await sequelize.sync({ alter: false });
-      logger.info('Database synchronized');
+    switch (activeORM) {
+      case 'sequelize':
+        models = initializeModels(dbInstance);
+        logger.info('✅ Sequelize models initialized successfully');
+        
+        // Sync models in development (optional - use migrations in production)
+        if (process.env.NODE_ENV !== 'production' && process.env.DB_SYNC === 'true') {
+          logger.warn('Syncing database schema (development only)...');
+          await dbInstance.sync({ alter: false });
+          logger.info('Database schema synchronized');
+        }
+        break;
+        
+      case 'mongoose':
+        models = initializeModels(dbInstance);
+        logger.info('✅ Mongoose models initialized successfully');
+        // Mongoose doesn't need sync - schemas are applied automatically
+        break;
+        
+      case 'prisma':
+        models = initializeModels(dbInstance);
+        logger.info('✅ Prisma models initialized successfully');
+        // Prisma uses migrations via CLI
+        break;
+        
+      default:
+        throw new Error(`Unsupported ORM: ${activeORM}`);
     }
     
-    // Start the server
-    app.listen(port, () => {
-      logger.info(`Server running on port ${port}`);
-      logger.info(`Access the app: http://localhost:${port}`);
-      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    // Make models and database available throughout the app
+    app.locals.models = models;
+    app.locals.db = dbInstance;
+    global.models = models;
+    
+    logger.info('✅ Models are now globally accessible');
+    
+    // NOW load dynamic routes (after models are initialized)
+    const routesDir = path.resolve(__dirname, './routes');
+    try {
+      loadRoutes(app, routesDir);
+    } catch (err) {
+      logger.error('Failed to load routes:', err);
+      // Continue anyway - routes are optional
+    }
+    
+    // Add 404 handler AFTER all routes
+    app.use(notFoundHandler);
+    
+    // Add error handler LAST
+    app.use(errorHandler);
+    
+    // Start the HTTP server
+    const server = app.listen(port, () => {
+      logger.info('='.repeat(50));
+      logger.info(`🚀 GreyCodeJS Server Started Successfully!`);
+      logger.info(`📍 URL: http://localhost:${port}`);
+      logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`💾 ORM: ${activeORM.toUpperCase()}`);
+      logger.info(`📊 Models loaded: ${Object.keys(models).filter(k => !['sequelize', 'Sequelize', 'mongoose', 'prisma'].includes(k)).length}`);
+      logger.info('='.repeat(50));
     });
-  } catch (err) {
-    logger.error('Unable to start application:', err);
+
+    // Store server instance for graceful shutdown
+    app.locals.server = server;
+
+  } catch (error) {
+    logger.error('❌ Failed to start application:', error.message);
+    
+    // Provide helpful error messages
+    if (error.name === 'SequelizeConnectionRefusedError') {
+      logger.error('');
+      logger.error('Database connection failed. Please check:');
+      logger.error('1. Is your database server running?');
+      logger.error('   MySQL: sudo systemctl start mysql');
+      logger.error('   PostgreSQL: sudo systemctl start postgresql');
+      logger.error('');
+      logger.error('2. Are your credentials correct in config/database.js?');
+      logger.error('   - host: ' + (require('./config/database').host || 'localhost'));
+      logger.error('   - port: ' + (require('./config/database').port || '3306'));
+      logger.error('   - database: ' + (require('./config/database').database || 'N/A'));
+      logger.error('   - username: ' + (require('./config/database').username || 'N/A'));
+      logger.error('');
+      logger.error('3. Try running: npm run cli -- setup-db');
+      logger.error('');
+    }
+    
+    // Cleanup on failure
+    if (dbInstance) {
+      try {
+        await closeDatabase(dbInstance);
+      } catch (cleanupError) {
+        logger.error('Error during cleanup:', cleanupError);
+      }
+    }
+    
     process.exit(1);
   }
-})();
+}
+
+/**
+ * Graceful shutdown handler
+ */
+async function gracefulShutdown(signal) {
+  logger.info(`${signal} received. Starting graceful shutdown...`);
+  
+  const server = app.locals.server;
+  const db = app.locals.db;
+  
+  try {
+    // Stop accepting new connections
+    if (server) {
+      await new Promise((resolve, reject) => {
+        server.close((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      logger.info('HTTP server closed');
+    }
+    
+    // Close database connection
+    if (db) {
+      await closeDatabase(db);
+    }
+    
+    logger.info('Graceful shutdown completed');
+    process.exit(0);
+  } catch (error) {
+    logger.error('Error during graceful shutdown:', error);
+    process.exit(1);
+  }
+}
+
+// Handle graceful shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception:', error);
-  process.exit(1);
+  gracefulShutdown('uncaughtException');
 });
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (reason) => {
-  logger.error('Unhandled Rejection:', reason);
-  process.exit(1);
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  gracefulShutdown('unhandledRejection');
 });
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  try {
-    if (app.locals.db) {
-      await app.locals.db.close();
-      logger.info('Database connection closed');
-    }
-    process.exit(0);
-  } catch (error) {
-    logger.error('Error during shutdown:', error);
-    process.exit(1);
-  }
-});
+// Start the application
+startApplication();
 
 module.exports = app;
