@@ -50,17 +50,10 @@ router.get('/', (req, res) => {
 app.use(router.use());
 logger.debug('Homepage router mounted');
 
-// Load dynamic routes
-const routesDir = path.resolve(__dirname, './routes');
-try {
-  loadRoutes(app, routesDir);
-  logger.debug(`Routes loaded from ${routesDir}`);
-} catch (err) {
-  logger.error('Failed to load routes:', err);
-}
+// NOTE: Dynamic routes will be loaded AFTER database and models are initialized
 
-// 404 handler (must be after all routes)
-app.use((req, res) => {
+// 404 handler (will be added after routes)
+const notFoundHandler = (req, res) => {
   logger.warn(`404 - Route not found: ${req.method} ${req.path}`);
   res.status(404).json({
     success: false,
@@ -68,10 +61,10 @@ app.use((req, res) => {
     path: req.path,
     method: req.method
   });
-});
+};
 
-// Error handling middleware (must be last)
-app.use((err, req, res, next) => {
+// Error handling middleware
+const errorHandler = (err, req, res, next) => {
   logger.error({
     message: err.message,
     stack: err.stack,
@@ -87,7 +80,7 @@ app.use((err, req, res, next) => {
       : err.message,
     ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
   });
-});
+};
 
 /**
  * Initialize database and start server
@@ -99,7 +92,7 @@ async function startApplication() {
     // Initialize database connection
     logger.info('Connecting to database...');
     dbInstance = await initializeDatabase();
-    logger.info('Database connection established successfully');
+    logger.info('✅ Database connection established successfully');
     
     // Initialize models based on active ORM
     let models = null;
@@ -107,7 +100,7 @@ async function startApplication() {
     switch (activeORM) {
       case 'sequelize':
         models = initializeModels(dbInstance);
-        logger.info('Sequelize models initialized successfully');
+        logger.info('✅ Sequelize models initialized successfully');
         
         // Sync models in development (optional - use migrations in production)
         if (process.env.NODE_ENV !== 'production' && process.env.DB_SYNC === 'true') {
@@ -119,13 +112,13 @@ async function startApplication() {
         
       case 'mongoose':
         models = initializeModels(dbInstance);
-        logger.info('Mongoose models initialized successfully');
+        logger.info('✅ Mongoose models initialized successfully');
         // Mongoose doesn't need sync - schemas are applied automatically
         break;
         
       case 'prisma':
         models = initializeModels(dbInstance);
-        logger.info('Prisma models initialized successfully');
+        logger.info('✅ Prisma models initialized successfully');
         // Prisma uses migrations via CLI
         break;
         
@@ -138,6 +131,23 @@ async function startApplication() {
     app.locals.db = dbInstance;
     global.models = models;
     
+    logger.info('✅ Models are now globally accessible');
+    
+    // NOW load dynamic routes (after models are initialized)
+    const routesDir = path.resolve(__dirname, './routes');
+    try {
+      loadRoutes(app, routesDir);
+    } catch (err) {
+      logger.error('Failed to load routes:', err);
+      // Continue anyway - routes are optional
+    }
+    
+    // Add 404 handler AFTER all routes
+    app.use(notFoundHandler);
+    
+    // Add error handler LAST
+    app.use(errorHandler);
+    
     // Start the HTTP server
     const server = app.listen(port, () => {
       logger.info('='.repeat(50));
@@ -145,6 +155,7 @@ async function startApplication() {
       logger.info(`📍 URL: http://localhost:${port}`);
       logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       logger.info(`💾 ORM: ${activeORM.toUpperCase()}`);
+      logger.info(`📊 Models loaded: ${Object.keys(models).filter(k => !['sequelize', 'Sequelize', 'mongoose', 'prisma'].includes(k)).length}`);
       logger.info('='.repeat(50));
     });
 
@@ -152,7 +163,25 @@ async function startApplication() {
     app.locals.server = server;
 
   } catch (error) {
-    logger.error('Failed to start application:', error);
+    logger.error('❌ Failed to start application:', error.message);
+    
+    // Provide helpful error messages
+    if (error.name === 'SequelizeConnectionRefusedError') {
+      logger.error('');
+      logger.error('Database connection failed. Please check:');
+      logger.error('1. Is your database server running?');
+      logger.error('   MySQL: sudo systemctl start mysql');
+      logger.error('   PostgreSQL: sudo systemctl start postgresql');
+      logger.error('');
+      logger.error('2. Are your credentials correct in config/database.js?');
+      logger.error('   - host: ' + (require('./config/database').host || 'localhost'));
+      logger.error('   - port: ' + (require('./config/database').port || '3306'));
+      logger.error('   - database: ' + (require('./config/database').database || 'N/A'));
+      logger.error('   - username: ' + (require('./config/database').username || 'N/A'));
+      logger.error('');
+      logger.error('3. Try running: npm run cli -- setup-db');
+      logger.error('');
+    }
     
     // Cleanup on failure
     if (dbInstance) {

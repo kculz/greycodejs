@@ -2,12 +2,13 @@
   "name": "greycodejs",
   "version": "0.0.2",
   "description": "",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "start": "node app.js",
+    "dev": "nodemon app.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "cli": "node bin/cli.js"
+    "cli": "node bin/cli.js",
+    "db:check": "node scripts/troubleshoot-db.js"
   },
   "bin": {
     "greycodejs": "./bin/cli.js"
