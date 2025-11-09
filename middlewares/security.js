@@ -74,8 +74,6 @@ const configureHelmet = () => {
     crossOriginResourcePolicy: { policy: 'same-origin' },
     // DNS Prefetch Control
     dnsPrefetchControl: { allow: false },
-    // Expect-CT
-    expectCt: { maxAge: 86400 },
     // Frameguard
     frameguard: { action: 'deny' },
     // Hide Powered-By header
@@ -88,18 +86,12 @@ const configureHelmet = () => {
     },
     // IE No Open
     ieNoOpen: true,
-    // Don't Sniff Mimetype
-    noSniff: true,
     // Origin Agent Cluster
     originAgentCluster: true,
     // Permitted Cross-Domain Policies
     permittedCrossDomainPolicies: { permittedPolicies: 'none' },
     // Referrer Policy
-    referrerPolicy: { policy: 'no-referrer' },
-    // X-Content-Type-Options
-    xContentTypeOptions: true,
-    // XSS Filter
-    xssFilter: true
+    referrerPolicy: { policy: 'no-referrer' }
   });
 };
 
@@ -198,19 +190,11 @@ const configureSanitization = () => {
 
 /**
  * Security Headers Middleware
- * Additional custom security headers
+ * Additional custom security headers (only ones not set by Helmet)
  */
 const securityHeaders = (req, res, next) => {
   // Remove sensitive information from errors
   res.removeHeader('X-Powered-By');
-  
-  // Add custom security headers
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  
-  // Prevent clickjacking
-  res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
   
   next();
 };
