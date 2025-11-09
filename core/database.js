@@ -148,6 +148,110 @@ async function initializePrisma() {
   return prisma;
 }
 
+/**
+ * Close database connection gracefully
+ * @param {Object} dbInstance - The database instance to close
+ */
+async function closeDatabase(dbInstance) {
+  if (!dbInstance) {
+    logger.warn('No database instance provided to close');
+    return;
+  }
+
+  try {
+    switch (activeORM) {
+      case 'sequelize':
+        await closeSequelize(dbInstance);
+        break;
+      case 'mongoose':
+        await closeMongoose(dbInstance);
+        break;
+      case 'prisma':
+        await closePrisma(dbInstance);
+        break;
+      default:
+        logger.warn(`Unsupported ORM for closing: ${activeORM}`);
+    }
+    logger.info('Database connection closed successfully');
+  } catch (error) {
+    logger.error('Error closing database connection:', error);
+    throw error;
+  }
+}
+
+/**
+ * Close Sequelize connection
+ * @param {Sequelize} sequelize - Sequelize instance
+ */
+async function closeSequelize(sequelize) {
+  if (sequelize && typeof sequelize.close === 'function') {
+    await sequelize.close();
+    logger.debug('Sequelize connection closed');
+  }
+}
+
+/**
+ * Close Mongoose connection
+ * @param {mongoose} mongoose - Mongoose instance
+ */
+async function closeMongoose(mongoose) {
+  if (mongoose && mongoose.connection && typeof mongoose.connection.close === 'function') {
+    await mongoose.connection.close();
+    logger.debug('Mongoose connection closed');
+  } else if (mongoose && typeof mongoose.disconnect === 'function') {
+    await mongoose.disconnect();
+    logger.debug('Mongoose disconnected');
+  }
+}
+
+/**
+ * Close Prisma connection
+ * @param {PrismaClient} prisma - Prisma client instance
+ */
+async function closePrisma(prisma) {
+  if (prisma && typeof prisma.$disconnect === 'function') {
+    await prisma.$disconnect();
+    logger.debug('Prisma connection disconnected');
+  }
+}
+
+/**
+ * Health check for database connection
+ */
+async function checkDatabaseHealth() {
+  try {
+    switch (activeORM) {
+      case 'sequelize':
+        const sequelize = require('./models').sequelize || global.models?.sequelize;
+        if (sequelize) {
+          await sequelize.authenticate();
+          return { status: 'healthy', orm: 'sequelize' };
+        }
+        break;
+      case 'mongoose':
+        const mongoose = require('mongoose');
+        if (mongoose.connection.readyState === 1) {
+          return { status: 'healthy', orm: 'mongoose' };
+        }
+        break;
+      case 'prisma':
+        // Prisma doesn't have a built-in health check, but we can run a simple query
+        const prisma = require('./models').prisma || global.models?.prisma;
+        if (prisma) {
+          await prisma.$queryRaw`SELECT 1`;
+          return { status: 'healthy', orm: 'prisma' };
+        }
+        break;
+    }
+    return { status: 'unhealthy', orm: activeORM };
+  } catch (error) {
+    logger.error('Database health check failed:', error);
+    return { status: 'unhealthy', orm: activeORM, error: error.message };
+  }
+}
+
 module.exports = {
-  initializeDatabase
+  initializeDatabase,
+  closeDatabase,
+  checkDatabaseHealth
 };
